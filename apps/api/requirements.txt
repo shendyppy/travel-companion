@@ -1,14 +1,14 @@
 # ==============================================================================
-# Travel Companion API — dependency runtime
+# Travel Companion API — runtime dependencies
 # ==============================================================================
 # Python 3.13
 #
-# Isinya cuma dependency LANGSUNG (yang beneran diimpor kode kita). Transitif
-# biar resolver yang urus. Versi sebelumnya nyampur keduanya, dan hasilnya ada
-# beberapa paket yang kebawa padahal nggak pernah diimpor: httpx,
-# beautifulsoup4, soupsieve, tenacity, cachetools, websockets. Ikut kehapus,
-# barengan google-genai/google-auth/google yang jadi nggak kepakai setelah
-# universal_wrapper.py diganti LiteLLM.
+# Direct dependencies only (things our code actually imports). Transitive ones
+# are left to the resolver. The previous version mixed both, and as a result
+# carried several packages that were never imported anywhere: httpx,
+# beautifulsoup4, soupsieve, tenacity, cachetools, websockets. Those are gone,
+# along with google-genai/google-auth/google, which became redundant once
+# universal_wrapper.py was replaced by LiteLLM.
 
 # --- Web framework ---
 fastapi==0.124.4
@@ -16,16 +16,16 @@ uvicorn==0.38.0
 pydantic==2.12.5
 
 # --- LLM ---
-# Satu antarmuka buat semua provider, plus normalisasi streaming dan
-# tool-calling. Di-pin ketat: LiteLLM rilisnya sering dan pernah ngubah
-# perilaku di rilis minor.
+# One interface for every provider, plus normalised streaming and tool-calling.
+# Pinned tightly: LiteLLM releases often and has changed behaviour in minor
+# versions.
 litellm==1.96.2
 
-# --- API penerbangan ---
+# --- Flight APIs ---
 amadeus==12.0.0
 requests==2.32.5
 
-# --- Session ---
+# --- Sessions ---
 redis==5.2.1
 
 # --- Config ---

@@ -1,5 +1,5 @@
-# Dependency development. Sengaja dipisah dari requirements.txt supaya image
-# produksi tetap ramping.
+# Development dependencies. Kept separate from requirements.txt so the
+# production image stays lean.
 #
 #   uv pip install -r requirements.txt -r requirements-dev.txt
 

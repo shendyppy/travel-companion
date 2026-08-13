@@ -1,20 +1,22 @@
 """
-LLM client — tipis di atas LiteLLM.
+LLM client — a thin layer over LiteLLM.
 
-Gantiin universal_wrapper.py (459 baris adapter tulisan tangan per provider).
-LiteLLM udah menormalkan streaming dan tool-calling ke format OpenAI untuk semua
-provider, jadi yang tersisa di sini cuma dua hal: nerjemahin env var jadi string
-model LiteLLM, dan nyediain satu jalur streaming yang ngerakit potongan tool call.
+Replaces universal_wrapper.py (459 lines of hand-written per-provider adapters).
+LiteLLM already normalises streaming and tool-calling to the OpenAI shape across
+providers, so what is left here is only two things: translating env vars into a
+LiteLLM model string, and providing one streaming path that reassembles tool
+call fragments.
 
-Kenapa ini penting buat BYOK (Fase 3): parameter `api_key` diteruskan per-panggilan,
-nggak pernah diambil dari state global. Jadi begitu key user masuk lewat header,
-dia tinggal dialirin ke sini tanpa perlu ngubah struktur apa pun.
+Why this matters for BYOK (phase 3): `api_key` is passed per call and never read
+from global state. Once a user's key arrives in a request header, it flows
+straight through without restructuring anything.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Optional
 
@@ -22,25 +24,40 @@ import litellm
 
 logger = logging.getLogger(__name__)
 
-# Jangan pernah nulis isi pesan atau kredensial ke log. Wajib dinyalain sebelum
-# BYOK masuk di Fase 3 -- log debug LiteLLM bisa ngutip seluruh request.
+# Common credential shapes: sk-..., AIza..., gsk_..., and Bearer headers. Used to
+# scrub provider error messages before they reach the log. Provider errors often
+# quote the request, and from phase 3 onward that request carries a user's key.
+_SECRET_PATTERN = re.compile(
+    r"(sk-[A-Za-z0-9_\-]{16,}|AIza[A-Za-z0-9_\-]{20,}|gsk_[A-Za-z0-9_\-]{16,}"
+    r"|Bearer\s+[A-Za-z0-9_\-\.]{16,}|(?i:api[_\-]?key\"?\s*[:=]\s*\"?)[A-Za-z0-9_\-]{16,})"
+)
+
+
+def scrub(text: str) -> str:
+    """Replace anything credential-shaped with [REDACTED]."""
+    return _SECRET_PATTERN.sub("[REDACTED]", text or "")
+
+
+# Never write message contents or credentials to the log. This must be on before
+# BYOK lands -- LiteLLM's debug logging can echo an entire request.
 litellm.turn_off_message_logging = True
 
-# Provider beda-beda dukungan parameternya. Tanpa ini, kirim `temperature` ke model
-# yang nggak nerima bakal ngelempar error; dengan ini parameternya dibuang diam-diam.
+# Providers differ in which parameters they accept. Without this, sending
+# `temperature` to a model that rejects it raises; with it, the parameter is
+# quietly dropped.
 litellm.drop_params = True
 
 
 # ==============================================================================
-# Resolusi provider
+# Provider resolution
 # ==============================================================================
 
-# provider -> (env model, model default, env api key, prefix LiteLLM)
+# provider -> (model env var, default model, api key env var, LiteLLM prefix)
 _PROVIDERS: dict[str, tuple[str, str, str, str]] = {
     "gemini": ("GEMINI_MODEL", "gemini-2.5-flash", "GEMINI_API_KEY", "gemini"),
     "openai": ("OPENAI_MODEL", "gpt-4o", "OPENAI_API_KEY", "openai"),
     "anthropic": ("ANTHROPIC_MODEL", "claude-sonnet-4-5", "ANTHROPIC_API_KEY", "anthropic"),
-    # GLM dan custom dua-duanya endpoint OpenAI-compatible, dibedain lewat api_base
+    # GLM and custom are both OpenAI-compatible endpoints, separated by api_base
     "glm": ("GLM_MODEL", "glm-4.6", "GLM_API_KEY", "openai"),
     "custom": ("CUSTOM_MODEL", "custom-model", "CUSTOM_API_KEY", "openai"),
 }
@@ -54,13 +71,13 @@ _API_BASE_ENV = {
 def active_provider() -> str:
     provider = os.getenv("LLM_PROVIDER", "gemini").lower()
     if provider not in _PROVIDERS:
-        logger.warning("LLM_PROVIDER '%s' nggak dikenal, balik ke gemini", provider)
+        logger.warning("Unknown LLM_PROVIDER '%s', falling back to gemini", provider)
         return "gemini"
     return provider
 
 
 def resolve_model(provider: Optional[str] = None) -> str:
-    """Bikin string model LiteLLM, mis. 'gemini/gemini-2.5-flash'."""
+    """Build the LiteLLM model string, e.g. 'gemini/gemini-2.5-flash'."""
     provider = provider or active_provider()
     model_env, model_default, _, prefix = _PROVIDERS[provider]
     return f"{prefix}/{os.getenv(model_env, model_default)}"
@@ -73,7 +90,7 @@ def resolve_api_base(provider: Optional[str] = None) -> Optional[str]:
 
 
 def server_api_key(provider: Optional[str] = None) -> Optional[str]:
-    """Key milik server. Di Fase 3 ini jadi cadangan kalau user nggak bawa key sendiri."""
+    """The server's own key. In phase 3 this becomes the fallback when a user brings none."""
     provider = provider or active_provider()
     _, _, key_env, _ = _PROVIDERS[provider]
     return os.getenv(key_env)
@@ -84,22 +101,22 @@ def is_configured(provider: Optional[str] = None) -> bool:
 
 
 # ==============================================================================
-# Hasil streaming
+# Streaming results
 # ==============================================================================
 
 
 @dataclass
 class ToolCall:
-    """Satu permintaan pemanggilan tool, hasil rakitan dari potongan-potongan stream."""
+    """One requested tool call, reassembled from stream fragments."""
 
     id: str
     name: str
-    arguments: str = ""  # JSON mentah; di-parse di registry biar error-nya ketangkep di sana
+    arguments: str = ""  # raw JSON; parsed in the registry so errors surface there
 
 
 @dataclass
 class StreamChunk:
-    """Satu kejadian dari stream LLM."""
+    """A single event from the LLM stream."""
 
     text: Optional[str] = None
     tool_calls: list[ToolCall] = field(default_factory=list)
@@ -121,26 +138,25 @@ async def stream_completion(
     max_tokens: Optional[int] = None,
 ) -> AsyncIterator[StreamChunk]:
     """
-    Streaming completion, opsional dengan tool.
+    Stream a completion, optionally with tools.
 
-    Ngeluarin StreamChunk berisi potongan teks begitu nyampe. Tool call
-    dikumpulin dulu sampai stream selesai, baru dikeluarin sekaligus di chunk
-    terakhir -- soalnya argumen tool datang terpotong-potong dan JSON-nya baru
-    sah setelah utuh.
+    Yields StreamChunk with text fragments as they arrive. Tool calls are
+    accumulated and emitted together in the final chunk, because their arguments
+    arrive in pieces and the JSON is only valid once complete.
 
     Args:
-        messages: riwayat lengkap format OpenAI. Selalu kirim semuanya --
-            di sinilah bug amnesia si wrapper lama nggak bisa kejadian lagi.
-        tools: skema tool. None berarti chat biasa.
-        api_key: key milik user (BYOK). Kalau None, pakai key server.
+        messages: the full history in OpenAI format. Always send all of it --
+            this is where the old wrapper's amnesia bug cannot recur.
+        tools: tool schemas. None means a plain chat call.
+        api_key: the user's key (BYOK). Falls back to the server key.
     """
     provider = provider or active_provider()
     key = api_key or server_api_key(provider)
 
     if not key:
         raise LLMConfigError(
-            f"Nggak ada API key buat provider '{provider}'. "
-            f"Set {_PROVIDERS[provider][2]} di .env, atau kirim key kamu sendiri."
+            f"No API key for provider '{provider}'. "
+            f"Set {_PROVIDERS[provider][2]} in .env, or supply your own key."
         )
 
     kwargs: dict[str, Any] = {
@@ -164,7 +180,7 @@ async def stream_completion(
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
 
-    # Dikumpulin per index -- provider ngirim argumen tool sepotong-sepotong
+    # Keyed by index -- providers stream tool arguments in fragments
     pending: dict[int, ToolCall] = {}
     finish_reason: Optional[str] = None
 
@@ -205,30 +221,38 @@ async def stream_completion(
                         call.arguments += fn.arguments
 
     except litellm.AuthenticationError as exc:
-        # Jangan teruskan pesan mentah provider -- sering ngutip request, dan di
-        # Fase 3 request itu berisi key user.
-        logger.warning("Autentikasi LLM gagal buat provider %s", provider)
-        raise LLMAuthError("API key ditolak provider.") from exc
+        # Do not pass the provider's raw message through -- it often quotes the
+        # request, and from phase 3 that request contains the user's key.
+        logger.warning("LLM authentication failed for provider %s", provider)
+        raise LLMAuthError("The API key was rejected by the provider.") from exc
     except litellm.RateLimitError as exc:
-        logger.warning("Kena rate limit provider %s", provider)
-        raise LLMRateLimitError("Provider lagi kena rate limit. Coba lagi sebentar.") from exc
+        logger.warning("Rate limited by provider %s", provider)
+        raise LLMRateLimitError("The provider is rate limiting. Try again shortly.") from exc
     except (LLMConfigError, LLMAuthError, LLMRateLimitError):
         raise
     except Exception as exc:
-        logger.error("Panggilan LLM gagal (%s): %s", provider, type(exc).__name__)
-        raise LLMError("Panggilan ke LLM gagal.") from exc
+        # The original message is logged (after scrubbing) so problems like
+        # "model not found" stay diagnosable. What reaches the user stays generic.
+        logger.error(
+            "LLM call failed (%s, model=%s): %s: %s",
+            provider,
+            kwargs["model"],
+            type(exc).__name__,
+            scrub(str(exc)),
+        )
+        raise LLMError("The call to the language model failed.") from exc
 
     ordered = [pending[i] for i in sorted(pending) if pending[i].name]
     yield StreamChunk(tool_calls=ordered, finish_reason=finish_reason)
 
 
 # ==============================================================================
-# Error
+# Errors
 # ==============================================================================
 
 
 class LLMError(Exception):
-    """Kegagalan LLM yang aman ditampilkan ke user (nggak ngandung detail request)."""
+    """An LLM failure safe to show a user (carries no request detail)."""
 
 
 class LLMConfigError(LLMError):
