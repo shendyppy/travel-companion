@@ -12,12 +12,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 
-try:
-    from src.destination_lookup import DestinationDatabase
-    from src.intelligent_date_generator import IntelligentDateGenerator
-except ImportError:
-    from destination_lookup import DestinationDatabase
-    from intelligent_date_generator import IntelligentDateGenerator
+from src.providers.destination_lookup import DestinationDatabase
+from src.providers.intelligent_date_generator import IntelligentDateGenerator
 
 @dataclass
 class FlightSuggestion:

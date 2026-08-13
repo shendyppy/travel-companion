@@ -26,9 +26,12 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /build/wheels -r requirements
 FROM python:3.13-slim as runtime
 
 # Set environment variables
+# PYTHONPATH=/app/src is deliberately gone: it made modules importable via two
+# paths (`from config` AND `from src.config`), which is why every import in the
+# codebase was written twice inside try/except. There is one path now, `src.*`,
+# resolved from WORKDIR /app.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src \
     PORT=8000
 
 WORKDIR /app

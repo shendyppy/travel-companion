@@ -1,595 +1,292 @@
 """
-Travel Agent REST API
+Travel Companion API.
 
-FastAPI-based REST API for Travel Buddy AI Assistant.
-Ready for Flutter mobile app integration.
+Notable changes from the previous version:
 
-Usage:
-    uvicorn src.api:app --reload --port 8000
-    
-Endpoints:
-    POST /api/chat              - Chat with AI (main)
-    POST /api/flights/search    - Direct flight search
-    GET  /api/health            - Health check
-    GET  /api/suggestions/initial - Get initial suggestions for app launch
+- **Real streaming.** /api/chat/stream used to call a synchronous agent to
+  completion and then emit the whole reply in one event. That was not just fake
+  streaming: the blocking call also stalled the event loop, so other users
+  queued behind it. It is async end to end now.
+
+- **Sessions no longer hold agent objects in memory.** There used to be an
+  `_agents` cache of TravelAgent instances, because they could not be serialised
+  to Redis. Conversations therefore broke as soon as Cloud Run ran more than one
+  instance, or after a cold start. Only the message history is stored now --
+  plain JSON any instance can read.
+
+- **Tool events.** Clients receive tool_start and tool_result, so the UI can show
+  what the agent is doing instead of an anonymous spinner.
 """
 
+from __future__ import annotations
+
+import json
 import logging
 import os
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, AsyncIterator, Optional
 
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-# Load environment variables
-load_dotenv()
+from src import tools
+from src.agent import AgentEvent, Turn, run as run_agent
+from src.config import LOG_FORMAT, LOG_LEVEL
+from src.llm import active_provider, is_configured, resolve_model
+from src.models import ChatRequest, ChatResponse, HealthResponse
+from src.session_store import close_session_store, get_session_store
+from src.suggestion_engine import ConversationState, get_suggestion_engine
 
-# Import internal modules - try relative first, then absolute
-try:
-    from src.models import (
-        ChatRequest,
-        ChatResponse,
-        FlightSearchRequest,
-        FlightSearchResponse,
-        FlightInfo,
-        HealthResponse,
-    )
-    from src.config import (
-        AMADEUS_CONFIGURED,
-        LLM_PROVIDER,
-    )
-    from src.suggestion_engine import (
-        SuggestionEngine,
-        ConversationState,
-        get_suggestion_engine,
-    )
-    from src.session_store import get_session_store, close_session_store
-except ImportError:
-    # Fallback for running from within src directory
-    from models import (
-        ChatRequest,
-        ChatResponse,
-        FlightSearchRequest,
-        FlightSearchResponse,
-        FlightInfo,
-        HealthResponse,
-    )
-    from config import (
-        AMADEUS_CONFIGURED,
-        LLM_PROVIDER,
-    )
-    from suggestion_engine import (
-        SuggestionEngine,
-        ConversationState,
-        get_suggestion_engine,
-    )
-    from session_store import get_session_store, close_session_store
-
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
-# ==============================================================================
-# APP INITIALIZATION
-# ==============================================================================
+# How many recent messages travel with each turn. Unbounded history means token
+# cost that only ever grows; 24 messages is roughly 12 exchanges, enough for a
+# realistic planning conversation.
+MAX_HISTORY_MESSAGES = 24
 
 app = FastAPI(
-    title="Travel Buddy API",
-    description="AI-powered travel assistant API for budget travel planning",
-    version="1.0.0",
+    title="Travel Companion API",
+    description="AI travel companion: destination recommendations, flight search, itinerary planning",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
 
-# CORS middleware for Flutter app
+# allow_origins=["*"] together with allow_credentials=True is rejected by
+# browsers, and becomes less defensible once BYOK lands. Origins are configurable.
+_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your Flutter app domain
+    allow_origins=_origins or ["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
-# Session storage - uses Redis if configured, otherwise in-memory
-# In-memory agents cache (agents can't be serialized to Redis directly)
-_agents: dict = {}
-
-# Suggestion engine
-suggestion_engine = get_suggestion_engine()
+suggestions = get_suggestion_engine()
 
 
-async def get_or_create_agent(session_id: Optional[str] = None) -> tuple:
-    """
-    Get existing agent from session or create new one.
-    
-    Session metadata is stored in Redis (if configured) for persistence.
-    Agent instances are kept in memory since they can't be serialized.
-    """
-    try:
-        from src.agent import TravelAgent
-    except ImportError:
-        from agent import TravelAgent
-    
+# ==============================================================================
+# Sessions
+# ==============================================================================
+
+
+async def _load_session(session_id: Optional[str]) -> tuple[str, dict[str, Any]]:
     store = get_session_store()
-    
-    # Check if session exists
+
     if session_id:
-        session_data = await store.get(session_id)
-        if session_data and session_id in _agents:
-            return _agents[session_id], session_id, session_data
-    
-    # Create new session
-    new_session_id = session_id or str(uuid.uuid4())
-    agent = TravelAgent()
-    
-    # Session state for tracking conversation context
-    session_data = {
+        data = await store.get(session_id)
+        if data:
+            data.setdefault("history", [])
+            return session_id, data
+
+    new_id = session_id or str(uuid.uuid4())
+    data = {
         "created_at": datetime.now().isoformat(),
         "state": ConversationState.NEW.value,
         "destination": None,
-        "origin": None,
         "message_count": 0,
+        "history": [],
     }
-    
-    # Store session data
-    await store.set(new_session_id, session_data)
-    _agents[new_session_id] = agent
-    
-    logger.info(f"Created new session: {new_session_id}")
-    return agent, new_session_id, session_data
+    await store.set(new_id, data)
+    logger.info("New session: %s", new_id[:8])
+    return new_id, data
+
+
+async def _save_session(session_id: str, data: dict[str, Any], turn: Turn) -> None:
+    history = [*data.get("history", []), *turn.messages]
+    data["history"] = history[-MAX_HISTORY_MESSAGES:]
+    data["message_count"] = data.get("message_count", 0) + 1
+    await get_session_store().set(session_id, data)
+
+
+def _next_suggestions(data: dict[str, Any], user_message: str, reply: str, used_tools: list[str]) -> list[str]:
+    state, destination = suggestions.detect_state_from_response(
+        user_message=user_message,
+        ai_response=reply,
+        has_flights="search_flights" in used_tools,
+        current_destination=data.get("destination"),
+    )
+    data["state"] = state.value
+    if destination:
+        data["destination"] = destination
+    return suggestions.generate_suggestions(
+        state=state,
+        destination=destination or data.get("destination"),
+        has_flights="search_flights" in used_tools,
+        response_text=reply,
+        count=4,
+    )
 
 
 # ==============================================================================
-# ENDPOINTS
+# Chat
 # ==============================================================================
 
-@app.get("/api/health", response_model=HealthResponse, tags=["System"])
-async def health_check():
+
+def _sse(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
+
+
+@app.post("/api/chat/stream", tags=["Chat"])
+async def chat_stream(request: ChatRequest):
     """
-    Health check endpoint for monitoring and load balancer probes.
-    
-    Returns service status, version, and configuration info.
+    Streaming chat over Server-Sent Events.
+
+    Event sequence:
+        session      -> session id, sent first
+        text_delta   -> text fragments, forwarded as the model produces them
+        tool_start   -> the agent began calling a tool (drives UI status)
+        tool_result  -> tool output (render as cards)
+        suggestions  -> follow-up chips
+        error        -> something failed; the stream still closes cleanly
+        [DONE]       -> terminator
     """
-    return HealthResponse(
-        status="healthy",
-        version="1.0.0",
-        llm_provider=LLM_PROVIDER,
-        amadeus_configured=AMADEUS_CONFIGURED,
-        timestamp=datetime.now()
+
+    async def events() -> AsyncIterator[str]:
+        session_id, data = await _load_session(request.session_id)
+        yield _sse({"type": "session", "session_id": session_id})
+
+        reply_parts: list[str] = []
+        used_tools: list[str] = []
+        turn: Optional[Turn] = None
+        failed = False
+
+        try:
+            async for item in run_agent(data.get("history", []), request.message):
+                if isinstance(item, Turn):
+                    turn = item
+                    continue
+
+                event: AgentEvent = item
+                if event.type == "text_delta":
+                    reply_parts.append(event.text or "")
+                    yield _sse({"type": "text_delta", "content": event.text})
+                elif event.type == "tool_start":
+                    used_tools.append(event.tool or "")
+                    yield _sse({"type": "tool_start", "tool": event.tool, "arguments": event.arguments})
+                elif event.type == "tool_result":
+                    yield _sse({"type": "tool_result", "tool": event.tool, "result": event.result})
+                elif event.type == "error":
+                    failed = True
+                    yield _sse({"type": "error", "error": event.error})
+                elif event.type == "done":
+                    pass
+        except Exception:
+            # Never leak internals to the client
+            logger.error("Chat stream blew up", exc_info=True)
+            yield _sse({"type": "error", "error": "Something went wrong on our side. Please try again."})
+            failed = True
+
+        if turn is not None and not failed:
+            reply = turn.text or "".join(reply_parts)
+            chips = _next_suggestions(data, request.message, reply, used_tools)
+            await _save_session(session_id, data, turn)
+            yield _sse({"type": "suggestions", "suggestions": chips})
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # stop proxies from buffering
+        },
     )
 
 
 @app.post("/api/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(request: ChatRequest):
     """
-    Main chat endpoint for conversation with Travel Buddy AI.
-    
-    Handles:
-    - Natural language travel questions
-    - Automatic flight search detection
-    - Multi-turn conversations (via session_id)
-    - Context-aware suggestions for next prompts
-    
-    Returns AI response with suggestions, optionally with flight results if detected.
+    Non-streaming chat. Same path, events just collected first.
+
+    For UI, prefer /api/chat/stream -- the wait feels far shorter.
     """
-    try:
-        # Get or create agent for this session
-        agent, session_id, session_data = await get_or_create_agent(request.session_id)
-        
-        logger.info(f"Chat request [session={session_id[:8]}...]: {request.message[:50]}...")
-        
-        # Send message to agent
-        result = agent.send_message(request.message)
-        
-        if result is None:
-            raise HTTPException(status_code=500, detail="Failed to get response from AI")
-        
-        # Handle different response types
-        if isinstance(result, dict):
-            response_text = result.get("text", str(result))
-            flights_data = result.get("flights", None)
-        else:
-            response_text = str(result)
-            flights_data = None
-        
-        # Convert flights to FlightInfo if present
-        flights = None
-        has_flights = False
-        if flights_data and isinstance(flights_data, list):
-            flights = [_convert_to_flight_info(f) for f in flights_data if f]
-            has_flights = bool(flights)
-        
-        # Detect conversation state and generate suggestions
-        current_destination = session_data.get("destination")
-        state, detected_destination = suggestion_engine.detect_state_from_response(
-            user_message=request.message,
-            ai_response=response_text,
-            has_flights=has_flights,
-            current_destination=current_destination
-        )
-        
-        # Update session data with new state
-        session_data["state"] = state.value
-        session_data["message_count"] = session_data.get("message_count", 0) + 1
-        if detected_destination:
-            session_data["destination"] = detected_destination
-        
-        # Save updated session
-        store = get_session_store()
-        await store.set(session_id, session_data)
-        
-        # Generate context-aware suggestions
-        suggestions = suggestion_engine.generate_suggestions(
-            state=state,
-            destination=detected_destination or current_destination,
-            has_flights=has_flights,
-            response_text=response_text,
-            count=4
-        )
-        
-        return ChatResponse(
-            response=response_text,
-            flights=flights,
-            session_id=session_id,
-            suggestions=suggestions
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Chat error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+    session_id, data = await _load_session(request.session_id)
 
+    parts: list[str] = []
+    used_tools: list[str] = []
+    turn: Optional[Turn] = None
+    error: Optional[str] = None
 
-@app.post("/api/chat/stream", tags=["Chat"])
-async def chat_stream(request: ChatRequest):
-    """
-    Streaming chat endpoint using Server-Sent Events (SSE).
+    async for item in run_agent(data.get("history", []), request.message):
+        if isinstance(item, Turn):
+            turn = item
+        elif item.type == "text_delta":
+            parts.append(item.text or "")
+        elif item.type == "tool_start":
+            used_tools.append(item.tool or "")
+        elif item.type == "error":
+            error = item.error
 
-    This is the preferred endpoint for mobile apps as it provides:
-    - Real-time text streaming (better UX)
-    - Progressive updates
-    - No timeout issues (connection stays alive)
+    reply = (turn.text if turn else "".join(parts)) or (error or "Sorry, something is off right now.")
+    chips: list[str] = []
+    if turn and not error:
+        chips = _next_suggestions(data, request.message, reply, used_tools)
+        await _save_session(session_id, data, turn)
 
-    Returns events in this format:
-    - session: Session ID for conversation continuity
-    - text: Partial or complete AI response
-    - flights: Flight search results (if any)
-    - suggestions: Context-aware suggestions
-    - done: Stream completion
-    - error: Error message if something went wrong
-    """
-    async def generate_events():
-        try:
-            # Get or create agent for this session
-            agent, session_id, session_data = await get_or_create_agent(request.session_id)
-
-            logger.info(f"Chat stream request [session={session_id[:8]}...]: {request.message[:50]}...")
-
-            # Send session ID first
-            import json
-            yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
-
-            # Send message to agent
-            result = agent.send_message(request.message)
-
-            if result is None:
-                yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to get response from AI'})}\n\n"
-                yield f"data: [DONE]\n\n"
-                return
-
-            # Handle different response types
-            if isinstance(result, dict):
-                response_text = result.get("text", str(result))
-                flights_data = result.get("flights", None)
-            else:
-                response_text = str(result)
-                flights_data = None
-
-            # Send text response
-            yield f"data: {json.dumps({'type': 'text', 'content': response_text})}\n\n"
-
-            # Convert flights to FlightInfo if present
-            flights = None
-            has_flights = False
-            if flights_data and isinstance(flights_data, list):
-                flights = [_convert_to_flight_info(f) for f in flights_data if f]
-                has_flights = bool(flights)
-
-                # Send flights as separate event
-                if flights:
-                    flights_dict = [f.model_dump() for f in flights]
-                    yield f"data: {json.dumps({'type': 'flights', 'flights': flights_dict})}\n\n"
-
-            # Detect conversation state and generate suggestions
-            current_destination = session_data.get("destination")
-            state, detected_destination = suggestion_engine.detect_state_from_response(
-                user_message=request.message,
-                ai_response=response_text,
-                has_flights=has_flights,
-                current_destination=current_destination
-            )
-
-            # Update session data with new state
-            session_data["state"] = state.value
-            session_data["message_count"] = session_data.get("message_count", 0) + 1
-            if detected_destination:
-                session_data["destination"] = detected_destination
-
-            # Save updated session
-            store = get_session_store()
-            await store.set(session_id, session_data)
-
-            # Generate and send suggestions
-            suggestions = suggestion_engine.generate_suggestions(
-                state=state,
-                destination=detected_destination or current_destination,
-                has_flights=has_flights,
-                response_text=response_text,
-                count=4
-            )
-
-            yield f"data: {json.dumps({'type': 'suggestions', 'suggestions': suggestions})}\n\n"
-
-            # Send completion signal
-            yield f"data: [DONE]\n\n"
-
-        except Exception as e:
-            logger.error(f"Chat stream error: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
-            yield f"data: [DONE]\n\n"
-
-    return StreamingResponse(
-        generate_events(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
+    return ChatResponse(
+        response=reply,
+        flights=None,  # flights now arrive via tool_result events
+        session_id=session_id,
+        suggestions=chips,
     )
 
 
-@app.post("/api/flights/search", response_model=FlightSearchResponse, tags=["Flights"])
-async def search_flights(request: FlightSearchRequest):
-    """
-    Direct flight search endpoint.
-    
-    Search for flights using Amadeus API.
-    Use this when you already have specific origin, destination, and date.
-    """
-    try:
-        try:
-            from src.flight_api import search_flights as amadeus_search, format_flight_results
-        except ImportError:
-            from flight_api import search_flights as amadeus_search, format_flight_results
-        
-        logger.info(f"Flight search: {request.origin} -> {request.destination} on {request.date}")
-        
-        # Validate date format
-        try:
-            datetime.strptime(request.date, "%Y-%m-%d")
-        except ValueError:
-            raise HTTPException(
-                status_code=400, 
-                detail="Invalid date format. Use YYYY-MM-DD (e.g., 2026-03-01)"
-            )
-        
-        # Check Amadeus configuration
-        if not AMADEUS_CONFIGURED:
-            raise HTTPException(
-                status_code=503,
-                detail="Flight search unavailable: Amadeus API not configured"
-            )
-        
-        # Search flights
-        result = amadeus_search(
-            origin=request.origin.upper(),
-            destination=request.destination.upper(),
-            departure_date=request.date,
-            adults=request.passengers
-        )
-        
-        if not result.get("success"):
-            return FlightSearchResponse(
-                success=False,
-                flights=[],
-                total_results=0,
-                error=result.get("error", "Unknown error"),
-                searched_date=request.date
-            )
-        
-        # Convert raw data to FlightInfo objects
-        flights_data = result.get("data", [])
-        flights = []
-        cheapest = None
-        cheapest_price = float('inf')
-        
-        for flight_data in flights_data[:10]:  # Limit to 10 results
-            flight_info = _parse_amadeus_flight(flight_data, request.origin, request.destination)
-            if flight_info:
-                flights.append(flight_info)
-                if flight_info.price < cheapest_price:
-                    cheapest_price = flight_info.price
-                    cheapest = flight_info
-        
-        return FlightSearchResponse(
-            success=True,
-            flights=flights,
-            cheapest=cheapest,
-            total_results=len(flights),
-            searched_date=request.date
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Flight search error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Flight search error: {str(e)}")
-
-
 # ==============================================================================
-# HELPER FUNCTIONS
+# Suggestions
 # ==============================================================================
 
-def _convert_to_flight_info(flight_data: dict) -> Optional[FlightInfo]:
-    """Convert raw flight data to FlightInfo model"""
-    try:
-        return FlightInfo(
-            airline=flight_data.get("airline", "Unknown"),
-            airline_code=flight_data.get("airline_code", "XX"),
-            departure_time=flight_data.get("departure_time", ""),
-            arrival_time=flight_data.get("arrival_time", ""),
-            origin=flight_data.get("origin", ""),
-            destination=flight_data.get("destination", ""),
-            price=float(flight_data.get("price", 0)),
-            currency=flight_data.get("currency", "IDR"),
-            duration=flight_data.get("duration", ""),
-            stops=int(flight_data.get("stops", 0))
-        )
-    except Exception as e:
-        logger.warning(f"Failed to convert flight data: {e}")
-        return None
-
-
-def _parse_amadeus_flight(flight_data: dict, origin: str, destination: str) -> Optional[FlightInfo]:
-    """Parse Amadeus API response to FlightInfo"""
-    try:
-        try:
-            from src.flight_api import get_airline_name_safe, format_duration, get_exchange_rate
-        except ImportError:
-            from flight_api import get_airline_name_safe, format_duration, get_exchange_rate
-        
-        # Get price
-        price_info = flight_data.get("price", {})
-        price = float(price_info.get("grandTotal", 0))
-        currency = price_info.get("currency", "EUR")
-        
-        # Convert to IDR if needed
-        if currency != "IDR":
-            rate = get_exchange_rate(currency, "IDR")
-            if rate:
-                price = price * rate
-                currency = "IDR"
-        
-        # Get itinerary info
-        itineraries = flight_data.get("itineraries", [])
-        if not itineraries:
-            return None
-        
-        first_leg = itineraries[0]
-        segments = first_leg.get("segments", [])
-        if not segments:
-            return None
-        
-        first_segment = segments[0]
-        last_segment = segments[-1]
-        
-        # Get airline info
-        airline_code = first_segment.get("operating", {}).get("carrierCode", "")
-        if not airline_code:
-            airline_code = first_segment.get("carrierCode", "XX")
-        
-        airline_name = get_airline_name_safe(airline_code, origin, destination)
-        
-        # Get departure and arrival times
-        departure = first_segment.get("departure", {})
-        arrival = last_segment.get("arrival", {})
-        
-        return FlightInfo(
-            airline=airline_name,
-            airline_code=airline_code,
-            departure_time=departure.get("at", ""),
-            arrival_time=arrival.get("at", ""),
-            origin=departure.get("iataCode", origin),
-            destination=arrival.get("iataCode", destination),
-            price=round(price, 0),
-            currency=currency,
-            duration=format_duration(first_leg.get("duration", "")),
-            stops=len(segments) - 1
-        )
-        
-    except Exception as e:
-        logger.warning(f"Failed to parse Amadeus flight: {e}")
-        return None
-
-
-# ==============================================================================
-# SUGGESTION ENDPOINTS
-# ==============================================================================
 
 class InitialSuggestionsResponse(BaseModel):
-    """Response model for initial suggestions"""
-    suggestions: list[str] = Field(..., description="Initial suggested prompts")
-    greeting: str = Field(..., description="Welcome greeting message")
+    suggestions: list[str] = Field(..., description="Opening prompts")
 
 
 @app.get("/api/suggestions/initial", response_model=InitialSuggestionsResponse, tags=["Suggestions"])
-async def get_initial_suggestions():
-    """
-    Get initial suggestions for app launch.
-    
-    Call this when the app first opens to show suggested prompts
-    before the user starts typing.
-    
-    Returns time-aware and seasonal suggestions.
-    """
-    suggestions = suggestion_engine.get_initial_suggestions(datetime.now())
-    
-    # Generate time-aware greeting
-    hour = datetime.now().hour
-    if 5 <= hour < 12:
-        greeting = "Selamat pagi! Mau kemana hari ini?"
-    elif 12 <= hour < 17:
-        greeting = "Selamat siang! Ada rencana liburan?"
-    elif 17 <= hour < 20:
-        greeting = "Selamat sore! Mau planning trip?"
-    else:
-        greeting = "Selamat malam! Mau cari tiket untuk besok?"
-    
-    return InitialSuggestionsResponse(
-        suggestions=suggestions,
-        greeting=greeting
+async def initial_suggestions():
+    return InitialSuggestionsResponse(suggestions=suggestions.get_initial_suggestions())
+
+
+# ==============================================================================
+# System
+# ==============================================================================
+
+
+@app.get("/api/health", response_model=HealthResponse, tags=["System"])
+async def health():
+    from src.config import AMADEUS_CONFIGURED
+
+    store_health = await get_session_store().health_check()
+    return HealthResponse(
+        status="healthy" if is_configured() else "degraded",
+        version="2.0.0",
+        llm_provider=active_provider(),
+        amadeus_configured=AMADEUS_CONFIGURED,
+        model=resolve_model(),
+        tools=tools.names(),
+        session_store=store_health.get("type", "unknown"),
     )
 
 
-# ==============================================================================
-# STARTUP / SHUTDOWN EVENTS
-# ==============================================================================
-
 @app.on_event("startup")
-async def startup_event():
-    """Initialize on startup"""
-    logger.info("=" * 50)
-    logger.info("Travel Buddy API Starting...")
-    logger.info(f"LLM Provider: {LLM_PROVIDER}")
-    logger.info(f"Amadeus Configured: {AMADEUS_CONFIGURED}")
-    
-    # Check session store
-    store = get_session_store()
-    health = await store.health_check()
-    logger.info(f"Session Store: {health.get('type', 'unknown')} - {health.get('status', 'unknown')}")
-    
-    logger.info("=" * 50)
+async def on_startup():
+    logger.info("=" * 60)
+    logger.info("Travel Companion API")
+    logger.info("  LLM provider : %s (%s)", active_provider(), resolve_model())
+    logger.info("  Key present  : %s", is_configured())
+    logger.info("  Tools        : %s", ", ".join(tools.names()))
+    health_info = await get_session_store().health_check()
+    logger.info("  Session store: %s", health_info.get("type"))
+    logger.info("=" * 60)
 
 
 @app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Travel Buddy API Shutting down...")
-    _agents.clear()
+async def on_shutdown():
     await close_session_store()
-
-
-# ==============================================================================
-# RUN DIRECTLY
-# ==============================================================================
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    logger.info("Travel Companion API stopped")

@@ -23,10 +23,12 @@ except ImportError:
     Client = None
     ResponseError = None
 
-try:
-    from src.config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET, AMADEUS_CONFIGURED
-except ImportError:
-    from config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET, AMADEUS_CONFIGURED
+from src.config import (
+    AMADEUS_CLIENT_ID,
+    AMADEUS_CLIENT_SECRET,
+    AMADEUS_CONFIGURED,
+    DATA_DIR,
+)
 
 # Get logger for this module
 # HINT: Logging is better than 'print()' because it can save errors to a file
@@ -75,9 +77,9 @@ def _load_airlines_database() -> Dict[str, list]:
         import os
         import csv
 
-        # Path to airlines database
-        # HINT: __file__ is the path to THIS script. We go up one folder (..) then into 'data'.
-        db_path = os.path.join(os.path.dirname(__file__), "..", "data", "airlines.dat")
+        # Anchored on config.DATA_DIR rather than relative to this file, so it
+        # does not break again if the module moves.
+        db_path = str(DATA_DIR / "airlines.dat")
 
         if not os.path.exists(db_path):
             logger.warning(f"Airlines database not found at {db_path}")
@@ -200,11 +202,9 @@ def search_flights(
     Returns:
         Dictionary with success status, flight data, and error info
     """
-    try:
-        from src.config import GOOGLE_FLIGHTS_ENABLED, GOOGLE_FLIGHTS_CONFIGURED
-    except ImportError:
-        from config import GOOGLE_FLIGHTS_ENABLED, GOOGLE_FLIGHTS_CONFIGURED
-    
+    from src.config import GOOGLE_FLIGHTS_ENABLED, GOOGLE_FLIGHTS_CONFIGURED
+
+
     # Normalize airport codes (city code -> airport code)
     origin_normalized = get_airport_from_city_code(origin) or origin
     destination_normalized = get_airport_from_city_code(destination) or destination
@@ -212,11 +212,9 @@ def search_flights(
     # Try Google Flights first (if enabled and configured)
     if GOOGLE_FLIGHTS_ENABLED and GOOGLE_FLIGHTS_CONFIGURED:
         try:
-            try:
-                from src.google_flights_api import search_google_flights
-            except ImportError:
-                from google_flights_api import search_google_flights
-            
+            from src.providers.google_flights_api import search_google_flights
+
+
             logger.info(f">>> Attempting Google Flights API search ({trip_type})...")
             result = search_google_flights(
                 origin_normalized, destination_normalized, departure_date, adults,
@@ -323,7 +321,12 @@ def search_amadeus_flights(
         error_message = str(error)
 
         # Parse common error messages to be more user-friendly
-        error_status = getattr(error, 'response', {}).get('status_code', None) if hasattr(error, 'response') else None
+        #
+        # error.response is a Response object from the Amadeus SDK, not a dict.
+        # The previous version called .get() on it, so every Amadeus failure made
+        # the error handler itself blow up with an AttributeError, hiding the
+        # real cause.
+        error_status = getattr(getattr(error, "response", None), "status_code", None)
 
         if error_status == 400:
             # Bad Request - usually date too far or no data available
@@ -403,7 +406,7 @@ def _load_airports_database() -> Dict[str, str]:
         import os
         import csv
 
-        db_path = os.path.join(os.path.dirname(__file__), "..", "data", "airports.dat")
+        db_path = str(DATA_DIR / "airports.dat")
 
         if not os.path.exists(db_path):
             logger.warning(f"Airports database not found at {db_path}")

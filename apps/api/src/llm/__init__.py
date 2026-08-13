@@ -1,15 +1,29 @@
-"""LLM module for universal AI provider support"""
+"""Layer LLM — LiteLLM di baliknya."""
 
-from .universal_wrapper import (
-    UniversalLLM,
-    LLMProvider,
-    LLMConfig,
-    create_llm,
+from src.llm.client import (
+    LLMAuthError,
+    LLMConfigError,
+    LLMError,
+    LLMRateLimitError,
+    StreamChunk,
+    ToolCall,
+    active_provider,
+    is_configured,
+    resolve_model,
+    server_api_key,
+    stream_completion,
 )
 
 __all__ = [
-    'UniversalLLM',
-    'LLMProvider',
-    'LLMConfig',
-    'create_llm',
+    "LLMAuthError",
+    "LLMConfigError",
+    "LLMError",
+    "LLMRateLimitError",
+    "StreamChunk",
+    "ToolCall",
+    "active_provider",
+    "is_configured",
+    "resolve_model",
+    "server_api_key",
+    "stream_completion",
 ]

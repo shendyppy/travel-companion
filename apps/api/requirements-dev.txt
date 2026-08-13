@@ -1,0 +1,9 @@
+# Development dependencies. Kept separate from requirements.txt so the
+# production image stays lean.
+#
+#   uv pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+
+pytest==9.1.1
+pytest-asyncio==1.4.0
