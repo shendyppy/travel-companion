@@ -42,6 +42,10 @@ htmlcov/
 *.log
 apps/api/data/trip_contexts.json
 
+# Knowledge index — derived data, rebuilt by scripts/build_index.py and baked
+# into the Docker image at build time
+apps/api/data/chroma/
+
 # ==============================================================================
 # Editor / OS
 # ==============================================================================

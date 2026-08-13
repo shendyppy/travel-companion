@@ -25,6 +25,12 @@ litellm==1.96.2
 amadeus==12.0.0
 requests==2.32.5
 
+# --- Knowledge base ---
+# Vector store for retrieval. Its default embedding model is ONNX and runs
+# in-process, which is the point: generation is bring-your-own-key, so retrieval
+# must not need an API key of its own.
+chromadb==1.5.9
+
 # --- Sessions ---
 redis==5.2.1
 
