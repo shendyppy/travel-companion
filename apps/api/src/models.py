@@ -113,4 +113,5 @@ class HealthResponse(BaseModel):
     tools: list[str] = Field(default_factory=list, description="Registered agent tools")
     amadeus_configured: bool = Field(default=False, description="Whether Amadeus API is configured")
     session_store: Optional[str] = Field(None, description="Active session store backend")
+    knowledge_base: dict = Field(default_factory=dict, description="Knowledge index availability and size")
     timestamp: datetime = Field(default_factory=datetime.now, description="Server timestamp")

@@ -47,6 +47,21 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 # Copy application code
 COPY --chown=appuser:appgroup src/ ./src/
 COPY --chown=appuser:appgroup data/ ./data/
+COPY --chown=appuser:appgroup scripts/ ./scripts/
+
+# Build the knowledge index into the image.
+#
+# Two things have to happen here rather than at runtime. Cloud Run's filesystem
+# is ephemeral and scales to zero, so an index written at runtime would be
+# rebuilt on every cold start. And ChromaDB downloads its ~80MB ONNX embedding
+# model on first use -- left to runtime, the first request after a cold start
+# would pay for that download. Building here bakes in both.
+#
+# CHROMA_CACHE points the model somewhere appuser can read after the USER switch.
+ENV CHROMA_CACHE=/app/.cache/chroma
+RUN mkdir -p /app/.cache && \
+    python -m scripts.build_index && \
+    chown -R appuser:appgroup /app/data /app/.cache
 
 # Switch to non-root user
 USER appuser

@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 from src import tools
 from src.agent import AgentEvent, Turn, run as run_agent
 from src.config import LOG_FORMAT, LOG_LEVEL
+from src.providers import knowledge
 from src.llm import active_provider, is_configured, resolve_model
 from src.models import ChatRequest, ChatResponse, HealthResponse
 from src.session_store import close_session_store, get_session_store
@@ -271,6 +272,7 @@ async def health():
         model=resolve_model(),
         tools=tools.names(),
         session_store=store_health.get("type", "unknown"),
+        knowledge_base=knowledge.stats(),
     )
 
 
