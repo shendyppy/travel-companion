@@ -1,15 +1,18 @@
 # @travel/ui
 
-Design system bersama. **Belum diisi** — nunggu output Claude Design (Fase 2).
+Shared design system. **Not populated yet** — waiting on Claude Design output
+(phase 4).
 
-Rencananya berisi:
+Planned contents:
 
-- Token dalam bentuk CSS custom property yang siap tempel ke `@theme` Tailwind v4
-  (project ini pakai Tailwind v4, config-in-CSS, bukan `tailwind.config.js`)
-- Primitif shadcn/ui bersama: `button`, `card`, `avatar`, `scroll-area`, `textarea`
-- Komponen domain: `ChatBubble`, `FlightCard`, `DestinationCard`, `ItineraryDayCard`,
-  `TripPanel`, `SuggestionChips`, `TypingIndicator`, `CalendarExportButton`
+- Tokens as CSS custom properties, ready to drop into Tailwind v4's `@theme`
+  (this project uses Tailwind v4, config-in-CSS, not `tailwind.config.js`)
+- Shared shadcn/ui primitives: `button`, `card`, `avatar`, `scroll-area`, `textarea`
+- Domain components: `ChatBubble`, `FlightCard`, `DestinationCard`,
+  `ItineraryDayCard`, `TripPanel`, `SuggestionChips`, `TypingIndicator`,
+  `CalendarExportButton`, `ApiKeyDialog`, `QuotaBanner`
 
-Sementara ini komponen hasil salinan masih nongkrong di `apps/web/src/components/`.
-Dipindah ke sini pas Fase 2, setelah ketahuan mana yang beneran kepakai lintas halaman
-(landing, chat, trip board) — biar nggak kepagian mindahin yang ternyata cuma dipakai sekali.
+For now the salvaged components still live in `apps/web/src/components/`. They move
+here in phase 4, once it is clear which ones are genuinely used across more than one
+page (landing, chat, trip board) — no point promoting something that turns out to be
+used once.

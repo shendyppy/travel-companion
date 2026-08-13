@@ -1,13 +1,15 @@
 # @travel/types
 
-Tipe TypeScript yang di-generate dari skema OpenAPI `apps/api`.
+TypeScript types generated from the `apps/api` OpenAPI schema.
 
-Model Pydantic di FastAPI adalah **satu-satunya sumber kebenaran** untuk kontrak API. File
-`src/api.ts` dihasilkan otomatis — jangan diedit manual, perubahannya bakal ketimpa.
+The Pydantic models in FastAPI are the **single source of truth** for the API
+contract. `src/api.ts` is generated — do not edit it by hand, your changes will be
+overwritten.
 
-## Cara generate
+## Generating
 
-API harus jalan dulu, karena skemanya dibaca dari endpoint `/openapi.json` yang hidup:
+The API has to be running, because the schema is read from its live
+`/openapi.json`:
 
 ```bash
 # terminal 1
@@ -17,4 +19,4 @@ cd apps/api && uvicorn src.api:app --reload
 pnpm --filter @travel/types generate
 ```
 
-Jalanin ulang tiap kali ada model Pydantic yang berubah di `apps/api/src/models.py`.
+Re-run this whenever a Pydantic model changes in `apps/api/src/models.py`.
