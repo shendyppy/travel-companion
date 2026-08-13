@@ -65,11 +65,13 @@ steps:
       - "10"
       - "--concurrency"
       - "80"
+      # 300s, bukan 60s: satu giliran agent bisa manggil beberapa tool berturut-turut
+      # (mis. resolve_dates -> lookup_place -> search_flights), dan pencarian
+      # penerbangan lintas rentang tanggal sendiri gampang makan puluhan detik.
       - "--timeout"
-      - "60s"
-      - "--set-env-vars"
-      - "PYTHONPATH=/app/src"
-      # Note: Add secrets via --set-secrets flag:
+      - "300s"
+      # PYTHONPATH sengaja nggak diset lagi — lihat catatan di Dockerfile.
+      # Secret ditambahkan lewat --set-secrets:
       # --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,AMADEUS_CLIENT_ID=amadeus-client-id:latest
     waitFor: ["push"]
 

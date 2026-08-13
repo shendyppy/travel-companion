@@ -23,10 +23,7 @@ except ImportError:
     Client = None
     ResponseError = None
 
-try:
-    from src.config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET, AMADEUS_CONFIGURED
-except ImportError:
-    from config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET, AMADEUS_CONFIGURED
+from src.config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET, AMADEUS_CONFIGURED
 
 # Get logger for this module
 # HINT: Logging is better than 'print()' because it can save errors to a file
@@ -200,11 +197,9 @@ def search_flights(
     Returns:
         Dictionary with success status, flight data, and error info
     """
-    try:
-        from src.config import GOOGLE_FLIGHTS_ENABLED, GOOGLE_FLIGHTS_CONFIGURED
-    except ImportError:
-        from config import GOOGLE_FLIGHTS_ENABLED, GOOGLE_FLIGHTS_CONFIGURED
-    
+    from src.config import GOOGLE_FLIGHTS_ENABLED, GOOGLE_FLIGHTS_CONFIGURED
+
+
     # Normalize airport codes (city code -> airport code)
     origin_normalized = get_airport_from_city_code(origin) or origin
     destination_normalized = get_airport_from_city_code(destination) or destination
@@ -212,11 +207,9 @@ def search_flights(
     # Try Google Flights first (if enabled and configured)
     if GOOGLE_FLIGHTS_ENABLED and GOOGLE_FLIGHTS_CONFIGURED:
         try:
-            try:
-                from src.google_flights_api import search_google_flights
-            except ImportError:
-                from google_flights_api import search_google_flights
-            
+            from src.providers.google_flights_api import search_google_flights
+
+
             logger.info(f">>> Attempting Google Flights API search ({trip_type})...")
             result = search_google_flights(
                 origin_normalized, destination_normalized, departure_date, adults,

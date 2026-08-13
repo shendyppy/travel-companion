@@ -147,7 +147,7 @@ class RAGCache:
 
         # In production, this would use vector similarity search
         # For now, simple keyword matching
-        from destination_data import DESTINATIONS
+        from src.providers.destination_data import DESTINATIONS
 
         results = []
         query_lower = query.lower()
@@ -227,8 +227,8 @@ class SmartPromptManager:
     def _analyze_intent(self, user_input: str, history: List) -> Dict:
         """Analyze user intent from message and history"""
         # Import here to avoid circular import
-        from destination_data import detect_travel_preferences
-        from smart_detection import detect_travel_intentions
+        from src.providers.destination_data import detect_travel_preferences
+        from src.providers.smart_detection import detect_travel_intentions
 
         intent = {}
 

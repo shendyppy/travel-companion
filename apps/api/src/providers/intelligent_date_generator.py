@@ -14,10 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
-try:
-    from src.destination_lookup import DestinationDatabase
-except ImportError:
-    from destination_lookup import DestinationDatabase
+from src.providers.destination_lookup import DestinationDatabase
 
 class KeywordType(Enum):
     """Types of keywords for date generation"""

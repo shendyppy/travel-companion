@@ -10,10 +10,7 @@ import requests
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-try:
-    from src.config import RAPIDAPI_KEY, RAPIDAPI_HOST, GOOGLE_FLIGHTS_CONFIGURED
-except ImportError:
-    from config import RAPIDAPI_KEY, RAPIDAPI_HOST, GOOGLE_FLIGHTS_CONFIGURED
+from src.config import RAPIDAPI_KEY, RAPIDAPI_HOST, GOOGLE_FLIGHTS_CONFIGURED
 
 logger = logging.getLogger(__name__)
 

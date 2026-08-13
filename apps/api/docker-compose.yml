@@ -25,8 +25,7 @@ services:
       # Redis connection
       - REDIS_URL=redis://redis:6379
       - REDIS_SESSION_TTL=3600
-      # Python
-      - PYTHONPATH=/app/src
+      # Python — PYTHONPATH sengaja nggak diset, lihat catatan di Dockerfile
       - PYTHONUNBUFFERED=1
     env_file:
       - .env
