@@ -1,0 +1,87 @@
+# ==============================================================================
+# Google Cloud Build Configuration
+# ==============================================================================
+# CI/CD pipeline for Travel Buddy API
+#
+# Usage:
+#   gcloud builds submit --config cloudbuild.yaml
+#
+# Prerequisites:
+#   1. Enable Cloud Build, Cloud Run, and Artifact Registry APIs
+#   2. Create Artifact Registry repository:
+#      gcloud artifacts repositories create travel-buddy \
+#        --location=asia-southeast1 --repository-format=docker
+#   3. Set up secrets in Secret Manager for API keys
+# ==============================================================================
+
+substitutions:
+  _REGION: asia-southeast1
+  _REPOSITORY: travel-buddy
+  _SERVICE_NAME: travel-buddy-api
+
+steps:
+  # Step 1: Build Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:latest"
+      - "."
+
+  # Step 2: Push to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}"
+    waitFor: ["build"]
+
+  # Step 3: Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--memory"
+      - "512Mi"
+      - "--cpu"
+      - "1"
+      - "--min-instances"
+      - "0"
+      - "--max-instances"
+      - "10"
+      - "--concurrency"
+      - "80"
+      - "--timeout"
+      - "60s"
+      - "--set-env-vars"
+      - "PYTHONPATH=/app/src"
+      # Note: Add secrets via --set-secrets flag:
+      # --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,AMADEUS_CLIENT_ID=amadeus-client-id:latest
+    waitFor: ["push"]
+
+# Store images in Artifact Registry
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:latest"
+
+# Build options
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: "E2_HIGHCPU_8"
+
+# Build timeout (10 minutes)
+timeout: "600s"

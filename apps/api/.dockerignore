@@ -1,0 +1,50 @@
+# ==============================================================================
+# Docker Ignore - Travel Buddy API
+# ==============================================================================
+# Files and directories to exclude from Docker build context
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+travel_buddy.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+!README.md
+
+# Development files
+.claude/
+.agent/
+docker-compose*.yml
+
+# OS files
+.DS_Store
+Thumbs.db

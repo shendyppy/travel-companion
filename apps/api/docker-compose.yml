@@ -1,0 +1,71 @@
+# ==============================================================================
+# Docker Compose - Local Development
+# ==============================================================================
+# Run Travel Buddy API with Redis for session management
+#
+# Usage:
+#   docker-compose up -d        # Start all services
+#   docker-compose logs -f api  # View API logs
+#   docker-compose down         # Stop all services
+#   docker-compose down -v      # Stop and remove volumes
+# ==============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Travel Buddy API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel-buddy-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Redis connection
+      - REDIS_URL=redis://redis:6379
+      - REDIS_SESSION_TTL=3600
+      # Python
+      - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Redis - Session Storage
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: travel-buddy-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Persistent volume for Redis data
+volumes:
+  redis_data:
+    driver: local
