@@ -84,6 +84,7 @@ async def run(
     user_message: str,
     *,
     api_key: Optional[str] = None,
+    provider: Optional[str] = None,
     max_iterations: int = MAX_ITERATIONS,
 ) -> AsyncIterator[AgentEvent | Turn]:
     """
@@ -96,6 +97,7 @@ async def run(
         history: previous turns in OpenAI message format
         user_message: the new message from the user
         api_key: the user's own key (BYOK). None means use the server key.
+        provider: the provider that key belongs to. None means the server default.
     """
     messages = build_messages(history, user_message)
     turn = Turn()
@@ -107,7 +109,7 @@ async def run(
 
         try:
             async for chunk in client.stream_completion(
-                messages, tools=tools.schemas(), api_key=api_key
+                messages, tools=tools.schemas(), api_key=api_key, provider=provider
             ):
                 if chunk.text:
                     collected_text.append(chunk.text)

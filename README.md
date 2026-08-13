@@ -5,7 +5,9 @@ budget, searches real flights, builds day-by-day itineraries, and exports the pl
 to your calendar. Answers in whatever language you write in — mostly Indonesian
 and English.
 
-> **Work in progress.** Phase 1 (agent core) is done. See the [roadmap](#roadmap).
+> **Work in progress.** The backend is complete through phase 3 — agent core,
+> knowledge base, and bring-your-own-key. The web app is next. See the
+> [roadmap](#roadmap).
 
 ## Layout
 
@@ -51,9 +53,46 @@ Current tools:
 | `search_flights_flexible` | Cheapest flight across a date range |
 | `recommend_destinations` | Suggestions by budget, style, and season |
 | `get_destination_info` | Cost breakdown and seasonal detail for one place |
+| `search_knowledge` | Retrieval over the travel knowledge base |
 
 Adding a capability means adding one decorated function, not another branch in the
 conversation pipeline.
+
+## Knowledge base
+
+`search_knowledge` queries a ChromaDB collection built from Wikivoyage guides plus
+curated cost and seasonal data. Embeddings run locally in-process (ONNX
+all-MiniLM-L6-v2), which is the load-bearing choice: generation is
+bring-your-own-key, so retrieval must not need an API key of its own, or the server
+would still pay per query.
+
+Retrieval is a tool, not a step in front of every message — always retrieving wastes
+latency on greetings and drags irrelevant passages into context.
+
+```bash
+cd apps/api
+python -m scripts.build_index            # curated + Wikivoyage
+python -m scripts.build_index --offline  # curated only
+```
+
+The index is built into the Docker image at build time. Cloud Run's filesystem is
+ephemeral and scales to zero, so a runtime index would be rebuilt on every cold
+start.
+
+## Bring your own key
+
+Without a key you get a small daily allowance on the server's key. Supply your own
+and the limit disappears — the cost moves to you.
+
+```
+POST /api/chat/stream
+X-LLM-Api-Key: <your key>       # optional
+X-LLM-Provider: openai          # optional; defaults to the server's provider
+```
+
+Your key is never stored, never logged, never echoed back, and never sent anywhere
+except the provider you chose. It exists for the duration of one request. Those
+properties are asserted in `tests/test_access.py`, not just claimed here.
 
 ## Running locally
 
@@ -67,7 +106,8 @@ uv pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env          # fill in your API keys
 uvicorn src.api:app --reload  # http://127.0.0.1:8000/docs
 
-pytest                        # 49 tests, no network needed
+python -m scripts.build_index # build the knowledge index (once)
+pytest                        # 76 tests, no network needed
 ```
 
 The web app is not runnable yet — the Next.js scaffold lands in phase 4.
@@ -78,8 +118,8 @@ The web app is not runnable yet — the Next.js scaffold lands in phase 4.
 |---|---|---|
 | 0 | Monorepo setup | ✅ |
 | 1 | Agent core: LiteLLM, tool-calling, real streaming | ✅ |
-| 2 | RAG: Wikivoyage → ChromaDB, retrieval tool | ⬜ |
-| 3 | Bring-your-own-key + rate limiting | ⬜ |
+| 2 | RAG: Wikivoyage → ChromaDB, retrieval tool | ✅ |
+| 3 | Bring-your-own-key + rate limiting | ✅ |
 | 4 | Landing page + design system | ⬜ |
 | 5 | Itinerary + calendar export (`.ics`) | ⬜ |
 | 6 | Shareable trip board | ⬜ |

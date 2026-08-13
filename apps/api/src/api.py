@@ -27,12 +27,12 @@ import uuid
 from datetime import datetime
 from typing import Any, AsyncIterator, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from src import tools
+from src import access, tools
 from src.agent import AgentEvent, Turn, run as run_agent
 from src.config import LOG_FORMAT, LOG_LEVEL
 from src.providers import knowledge
@@ -65,7 +65,7 @@ app.add_middleware(
     allow_origins=_origins or ["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_headers=["Content-Type", "Accept", access.API_KEY_HEADER, access.PROVIDER_HEADER],
 )
 
 suggestions = get_suggestion_engine()
@@ -134,12 +134,13 @@ def _sse(payload: dict[str, Any]) -> str:
 
 
 @app.post("/api/chat/stream", tags=["Chat"])
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatRequest, http: Request):
     """
     Streaming chat over Server-Sent Events.
 
     Event sequence:
         session      -> session id, sent first
+        quota        -> demo messages left today (absent when the user brought a key)
         text_delta   -> text fragments, forwarded as the model produces them
         tool_start   -> the agent began calling a tool (drives UI status)
         tool_result  -> tool output (render as cards)
@@ -148,9 +149,22 @@ async def chat_stream(request: ChatRequest):
         [DONE]       -> terminator
     """
 
+    grant = await access.check(http)
+
     async def events() -> AsyncIterator[str]:
         session_id, data = await _load_session(request.session_id)
         yield _sse({"type": "session", "session_id": session_id})
+
+        if not grant.allowed:
+            # Quota is a normal outcome, not a server fault, so it arrives as an
+            # event on an open stream rather than an HTTP error the client has to
+            # special-case mid-conversation.
+            yield _sse({"type": "quota_exceeded", "error": grant.reason, "remaining": 0})
+            yield "data: [DONE]\n\n"
+            return
+
+        if not grant.using_own_key:
+            yield _sse({"type": "quota", "remaining": grant.remaining})
 
         reply_parts: list[str] = []
         used_tools: list[str] = []
@@ -158,7 +172,12 @@ async def chat_stream(request: ChatRequest):
         failed = False
 
         try:
-            async for item in run_agent(data.get("history", []), request.message):
+            async for item in run_agent(
+                data.get("history", []),
+                request.message,
+                api_key=grant.api_key,
+                provider=grant.provider,
+            ):
                 if isinstance(item, Turn):
                     turn = item
                     continue
@@ -203,12 +222,16 @@ async def chat_stream(request: ChatRequest):
 
 
 @app.post("/api/chat", response_model=ChatResponse, tags=["Chat"])
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, http: Request):
     """
     Non-streaming chat. Same path, events just collected first.
 
     For UI, prefer /api/chat/stream -- the wait feels far shorter.
     """
+    grant = await access.check(http)
+    if not grant.allowed:
+        return JSONResponse(status_code=429, content={"error": grant.reason, "remaining": 0})
+
     session_id, data = await _load_session(request.session_id)
 
     parts: list[str] = []
@@ -216,7 +239,12 @@ async def chat(request: ChatRequest):
     turn: Optional[Turn] = None
     error: Optional[str] = None
 
-    async for item in run_agent(data.get("history", []), request.message):
+    async for item in run_agent(
+        data.get("history", []),
+        request.message,
+        api_key=grant.api_key,
+        provider=grant.provider,
+    ):
         if isinstance(item, Turn):
             turn = item
         elif item.type == "text_delta":
@@ -273,6 +301,7 @@ async def health():
         tools=tools.names(),
         session_store=store_health.get("type", "unknown"),
         knowledge_base=knowledge.stats(),
+        access=access.quota_info(),
     )
 
 
