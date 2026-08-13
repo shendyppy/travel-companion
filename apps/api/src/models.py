@@ -107,7 +107,10 @@ class FlightSearchResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Response model for health check endpoint"""
     status: str = Field(default="healthy", description="Service status")
-    version: str = Field(default="1.0.0", description="API version")
+    version: str = Field(default="2.0.0", description="API version")
     llm_provider: Optional[str] = Field(None, description="Active LLM provider")
+    model: Optional[str] = Field(None, description="Resolved LiteLLM model string")
+    tools: list[str] = Field(default_factory=list, description="Registered agent tools")
     amadeus_configured: bool = Field(default=False, description="Whether Amadeus API is configured")
+    session_store: Optional[str] = Field(None, description="Active session store backend")
     timestamp: datetime = Field(default_factory=datetime.now, description="Server timestamp")
