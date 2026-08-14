@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from src import access, catalogue, tools
+from src import access, catalogue, deals as deals_cache, tools
 from src.agent import AgentEvent, Turn, parse_seed, run as run_agent
 from src.config import LOG_FORMAT, LOG_LEVEL
 from src.providers import knowledge
@@ -329,6 +329,48 @@ async def destinations():
         destinations=catalogue.destinations(),
         facets=Facets(**catalogue.facets()),
     )
+
+
+# ==============================================================================
+# Deals
+# ==============================================================================
+
+
+class Deal(BaseModel):
+    city: str
+    country: str
+    iata: str
+    region: str
+    price_idr: int = Field(..., description="Cheapest fare found for departure_date")
+    airline: Optional[str] = None
+    stops: int = 0
+    daily_cost_idr: Optional[float] = Field(None, description="Estimated daily spend on the ground")
+    travel_types: list[str] = []
+
+
+class DealsResponse(BaseModel):
+    origin: str = Field(..., description="Origin actually served, which may differ from the one requested")
+    requested_origin: Optional[str] = Field(None, description="What the caller asked for, if anything")
+    updated_at: Optional[str] = Field(None, description="When these fares were fetched. None means the rail is cold.")
+    departure_date: Optional[str] = Field(None, description="The date these fares are for")
+    deals: list[Deal] = Field(default_factory=list)
+
+
+@app.get("/api/deals", response_model=DealsResponse, tags=["Deals"])
+async def deals(origin: Optional[str] = None):
+    """
+    Starting fares from one origin, served from cache.
+
+    This endpoint never calls a flight provider. A cold or unwarmed origin
+    returns an empty list with `updated_at: null`, and the client is expected to
+    render that as "cek harga" rather than as a price.
+
+    `origin` is clamped to the warmed set; `requested_origin` reports what was
+    asked for so the UI can say "kami tampilkan dari Jakarta" instead of
+    mislabelling the rail.
+    """
+    payload = await deals_cache.get(origin)
+    return DealsResponse(**payload, requested_origin=origin)
 
 
 # ==============================================================================
