@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from src import access, tools
+from src import access, catalogue, tools
 from src.agent import AgentEvent, Turn, parse_seed, run as run_agent
 from src.config import LOG_FORMAT, LOG_LEVEL
 from src.providers import knowledge
@@ -286,6 +286,48 @@ async def chat(request: ChatRequest, http: Request):
         flights=None,  # flights now arrive via tool_result events
         session_id=session_id,
         suggestions=chips,
+    )
+
+
+# ==============================================================================
+# Catalogue
+# ==============================================================================
+
+
+class FacetOption(BaseModel):
+    value: str = Field(..., description="Value to pass back in a tool seed")
+    label: str = Field(..., description="Indonesian display label")
+
+
+class BudgetBand(FacetOption):
+    range_label: str = Field(..., description="Short range, e.g. '500rb–1jt'")
+    min_idr: Optional[int] = Field(None, description="Lower bound of daily spend, IDR")
+    max_idr: Optional[int] = Field(None, description="Upper bound of daily spend, IDR")
+
+
+class Facets(BaseModel):
+    travel_types: list[FacetOption]
+    budget_bands: list[BudgetBand]
+    seasons: list[FacetOption]
+    regions: list[FacetOption]
+
+
+class DestinationsResponse(BaseModel):
+    destinations: list[dict[str, Any]] = Field(..., description="The curated destination set")
+    facets: Facets = Field(..., description="Vocabularies behind the inspiration and budget surfaces")
+
+
+@app.get("/api/destinations", response_model=DestinationsResponse, tags=["Catalogue"])
+async def destinations():
+    """
+    The curated destination set plus the facet vocabularies behind it.
+
+    Static for the lifetime of a deploy -- it is a Python literal, not a query.
+    Cache it hard at the edge.
+    """
+    return DestinationsResponse(
+        destinations=catalogue.destinations(),
+        facets=Facets(**catalogue.facets()),
     )
 
 

@@ -32,6 +32,21 @@ class Season(Enum):
     SPRING = "spring"      # Mar - May (cherry blossoms!)
     AUTUMN = "autumn"      # Sep - Nov (fall foliage)
 
+
+# The daily-spend boundaries behind BudgetCategory, in IDR. These used to exist
+# only as comments on the enum, which meant the landing page's budget picker
+# would have had to restate them and quietly drift the first time one moved.
+# `None` is an open end.
+BUDGET_BANDS: Dict[BudgetCategory, Dict[str, Optional[int]]] = {
+    BudgetCategory.BUDGET:     {"min_idr": None,      "max_idr": 500_000},
+    BudgetCategory.AFFORDABLE: {"min_idr": 500_000,   "max_idr": 1_000_000},
+    BudgetCategory.MODERATE:   {"min_idr": 1_000_000, "max_idr": 2_000_000},
+    BudgetCategory.SPLURGE:    {"min_idr": 2_000_000, "max_idr": None},
+}
+
+REGIONS = ("domestic", "international")
+
+
 class Destination:
     def __init__(self, name: str, country: str, region: str, description: str,
                  budget_category: BudgetCategory, travel_types: List[TravelType],

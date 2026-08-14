@@ -23,7 +23,7 @@ from src.tools.registry import tool
 logger = logging.getLogger(__name__)
 
 
-def _serialize(dest: destination_data.Destination) -> dict[str, Any]:
+def serialize(dest: destination_data.Destination) -> dict[str, Any]:
     daily = dest.estimated_daily_cost or {}
     return {
         "name": dest.name,
@@ -141,7 +141,7 @@ def recommend_destinations(
                 "region": region,
                 "season": season,
             },
-            "destinations": [_serialize(d) for d in matches],
+            "destinations": [serialize(d) for d in matches],
         },
     }
 
@@ -182,7 +182,7 @@ def get_destination_info(city: str, month: Optional[int] = None) -> dict[str, An
         None,
     )
     if match:
-        payload["destination"] = _serialize(match)
+        payload["destination"] = serialize(match)
 
     iata = primary_iata(city)
     if iata:
