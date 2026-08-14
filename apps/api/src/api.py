@@ -33,7 +33,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from src import access, tools
-from src.agent import AgentEvent, Turn, run as run_agent
+from src.agent import AgentEvent, Turn, parse_seed, run as run_agent
 from src.config import LOG_FORMAT, LOG_LEVEL
 from src.providers import knowledge
 from src.llm import active_provider, is_configured, resolve_model
@@ -139,14 +139,18 @@ async def chat_stream(request: ChatRequest, http: Request):
     Streaming chat over Server-Sent Events.
 
     Event sequence:
-        session      -> session id, sent first
-        quota        -> demo messages left today (absent when the user brought a key)
-        text_delta   -> text fragments, forwarded as the model produces them
-        tool_start   -> the agent began calling a tool (drives UI status)
-        tool_result  -> tool output (render as cards)
-        suggestions  -> follow-up chips
-        error        -> something failed; the stream still closes cleanly
-        [DONE]       -> terminator
+        session       -> session id, sent first
+        quota         -> demo messages left today (absent when the user brought a key)
+        seed_rejected -> a supplied seed failed validation and was dropped; the
+                         turn still runs on `message` alone. Not an error the
+                         user should see -- it means the client sent something
+                         wrong, so surface it in dev tooling, not in the UI.
+        text_delta    -> text fragments, forwarded as the model produces them
+        tool_start    -> the agent began calling a tool (drives UI status)
+        tool_result   -> tool output (render as cards)
+        suggestions   -> follow-up chips
+        error         -> something failed; the stream still closes cleanly
+        [DONE]        -> terminator
     """
 
     grant = await access.check(http)
@@ -166,6 +170,16 @@ async def chat_stream(request: ChatRequest, http: Request):
         if not grant.using_own_key:
             yield _sse({"type": "quota", "remaining": grant.remaining})
 
+        # Validated at the boundary, so the loop only ever receives a seed that
+        # has already passed the allowlist and its schema. A rejected seed is
+        # reported and dropped -- never fatal, because `message` on its own still
+        # produces a perfectly good answer and this runs in a hero.
+        agent_seed = None
+        if request.seed is not None:
+            agent_seed, seed_error = parse_seed(request.seed.tool, request.seed.arguments)
+            if seed_error:
+                yield _sse({"type": "seed_rejected", "tool": request.seed.tool, "reason": seed_error})
+
         reply_parts: list[str] = []
         used_tools: list[str] = []
         turn: Optional[Turn] = None
@@ -177,6 +191,7 @@ async def chat_stream(request: ChatRequest, http: Request):
                 request.message,
                 api_key=grant.api_key,
                 provider=grant.provider,
+                seed=agent_seed,
             ):
                 if isinstance(item, Turn):
                     turn = item
@@ -234,6 +249,11 @@ async def chat(request: ChatRequest, http: Request):
 
     session_id, data = await _load_session(request.session_id)
 
+    agent_seed = None
+    if request.seed is not None:
+        # No stream to report a rejection on here, so it stays in the log.
+        agent_seed, _ = parse_seed(request.seed.tool, request.seed.arguments)
+
     parts: list[str] = []
     used_tools: list[str] = []
     turn: Optional[Turn] = None
@@ -244,6 +264,7 @@ async def chat(request: ChatRequest, http: Request):
         request.message,
         api_key=grant.api_key,
         provider=grant.provider,
+        seed=agent_seed,
     ):
         if isinstance(item, Turn):
             turn = item

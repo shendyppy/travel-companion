@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Literal, Optional
 
 from src import tools
+from src.agent import seed as seeding
 from src.agent.persona import system_prompt
 from src.llm import client
 
@@ -85,6 +86,7 @@ async def run(
     *,
     api_key: Optional[str] = None,
     provider: Optional[str] = None,
+    seed: Optional[seeding.Seed] = None,
     max_iterations: int = MAX_ITERATIONS,
 ) -> AsyncIterator[AgentEvent | Turn]:
     """
@@ -98,10 +100,23 @@ async def run(
         user_message: the new message from the user
         api_key: the user's own key (BYOK). None means use the server key.
         provider: the provider that key belongs to. None means the server default.
+        seed: a tool call the client already decided on -- run before the first
+            model turn. Must have come from `seed.parse`; this function assumes
+            it is already validated and does not re-check it.
     """
     messages = build_messages(history, user_message)
     turn = Turn()
     tools_used: list[str] = []
+
+    if seed is not None:
+        # Runs before the model sees anything, and is announced with the same two
+        # events a model-chosen tool produces -- the frontend cannot tell the
+        # difference, which is the point.
+        prepared = await seeding.execute(seed)
+        tools_used.append(prepared.tool)
+        yield AgentEvent(type="tool_start", tool=prepared.tool, arguments=prepared.arguments)
+        yield AgentEvent(type="tool_result", tool=prepared.tool, result=prepared.result)
+        messages.extend(prepared.messages)
 
     for iteration in range(max_iterations):
         collected_text: list[str] = []

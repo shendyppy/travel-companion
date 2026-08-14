@@ -5,7 +5,7 @@ Clean request/response models for REST API endpoints.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Any, Optional
 from datetime import datetime
 
 
@@ -13,16 +13,56 @@ from datetime import datetime
 # CHAT MODELS
 # ==============================================================================
 
+class ToolSeed(BaseModel):
+    """
+    A tool call the client already decided on.
+
+    Sent by the landing page's structured surfaces -- the flight form, the
+    inspiration grid, the budget picker -- which know exactly which tool they
+    want and with what arguments. The agent runs it before its first turn and
+    then narrates the result.
+
+    Validated against an allowlist and the tool's own JSON Schema in
+    `agent/seed.py`. Anything that fails is dropped, and the request proceeds on
+    `message` alone.
+    """
+    tool: str = Field(..., description="Tool name. Must be one of the seedable tools.")
+    arguments: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Arguments for the tool, validated against its registered schema.",
+    )
+
+
 class ChatRequest(BaseModel):
     """Request model for chat endpoint"""
     message: str = Field(..., description="User message to the travel agent", min_length=1)
     session_id: Optional[str] = Field(None, description="Session ID for conversation continuity")
+    seed: Optional[ToolSeed] = Field(
+        None,
+        description=(
+            "Optional pre-decided tool call, run before the model's first turn. "
+            "Context, not a replacement for `message` -- send both."
+        ),
+    )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {"message": "Mau liburan ke Bali bulan depan", "session_id": None},
-                {"message": "Carikan tiket murah", "session_id": "abc123"}
+                {"message": "Carikan tiket murah", "session_id": "abc123"},
+                {
+                    "message": "Cari penerbangan Jakarta ke Bali, 20 September, 1 orang",
+                    "session_id": None,
+                    "seed": {
+                        "tool": "search_flights",
+                        "arguments": {
+                            "origin": "CGK",
+                            "destination": "DPS",
+                            "departure_date": "2026-09-20",
+                            "adults": 1,
+                        },
+                    },
+                },
             ]
         }
     }
