@@ -6,6 +6,6 @@ registered. Adding a new tool means creating the module and adding it below.
 """
 
 from src.tools import destinations, flights, knowledge, places  # noqa: F401  (side effect: registration)
-from src.tools.registry import dispatch, names, schemas, tool
+from src.tools.registry import dispatch, exists, names, schemas, tool, validate
 
-__all__ = ["dispatch", "names", "schemas", "tool"]
+__all__ = ["dispatch", "exists", "names", "schemas", "tool", "validate"]

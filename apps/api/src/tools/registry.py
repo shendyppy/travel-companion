@@ -5,7 +5,7 @@ One place to collect tool schemas and run them. Adding a capability now means
 adding one decorated function, not another branch in the middle of the
 conversation pipeline.
 
-Two properties are enforced here:
+Three properties are enforced here:
 
 1. **Dispatch never raises into the agent loop.** Tool failures come back as
    structured results so the model can read them, explain them to the user, and
@@ -16,6 +16,13 @@ Two properties are enforced here:
    blocking `requests`. Calling those directly from the async path would stall
    the event loop and make other users queue behind them -- exactly the problem
    the previous implementation had.
+
+3. **Arguments can be validated before dispatch.** `dispatch` is deliberately
+   forgiving -- a model that fills a tool in badly should get a readable error
+   back and another go, not a rejection. But `seed` (see `agent/seed.py`) lets a
+   *client* choose the tool and the arguments, and that is a different trust
+   level entirely. `validate` is the strict gate for that path. Both paths share
+   one schema, so the contract cannot drift between them.
 """
 
 from __future__ import annotations
@@ -25,7 +32,9 @@ import inspect
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional
+
+import jsonschema
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +86,46 @@ def schemas() -> list[dict[str, Any]]:
 
 def names() -> list[str]:
     return list(_REGISTRY)
+
+
+def exists(name: str) -> bool:
+    return name in _REGISTRY
+
+
+def validate(name: str, arguments: dict[str, Any]) -> Optional[str]:
+    """
+    Check arguments against a tool's registered schema. Returns an error string,
+    or None when they are valid.
+
+    Strict on purpose, and strict in a way `dispatch` is not: unknown properties
+    are rejected as well as bad ones. The caller here is a client, not the model,
+    so there is no reason to be generous -- an argument we do not recognise is
+    either a bug in the frontend or someone probing, and both deserve the same
+    flat refusal.
+
+    Uses `jsonschema` rather than hand-rolled checks. The schemas already exist
+    and this sits on a trust boundary; writing a second, weaker interpretation of
+    them by hand is how holes get made.
+    """
+    entry = _REGISTRY.get(name)
+    if entry is None:
+        return f"Tool '{name}' does not exist."
+
+    if not isinstance(arguments, dict):
+        return f"Arguments for '{name}' must be an object, got {type(arguments).__name__}."
+
+    schema = {**entry.parameters, "additionalProperties": False}
+    try:
+        jsonschema.validate(instance=arguments, schema=schema)
+    except jsonschema.ValidationError as exc:
+        location = ".".join(str(p) for p in exc.absolute_path)
+        return f"{location}: {exc.message}" if location else exc.message
+    except jsonschema.SchemaError as exc:
+        # A broken schema is our bug, not the caller's. Fail closed.
+        logger.error("Tool %s has an invalid schema: %s", name, exc)
+        return f"Tool '{name}' has an invalid schema."
+
+    return None
 
 
 def _error(message: str, **extra: Any) -> dict[str, Any]:

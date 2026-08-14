@@ -31,6 +31,12 @@ requests==2.32.5
 # must not need an API key of its own.
 chromadb==1.5.9
 
+# --- Validation ---
+# Tool argument validation for seeded (client-chosen) tool calls. Arrives
+# transitively via chromadb, but this code imports it directly, so it is pinned
+# here rather than relying on someone else's dependency staying put.
+jsonschema==4.26.0
+
 # --- Sessions ---
 redis==5.2.1
 
