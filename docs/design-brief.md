@@ -36,22 +36,104 @@ good.
 
 ### 1. Landing (`/`)
 
-**The hero must contain a working chat, not a screenshot.** This is the single most
-important decision in the whole design. A visitor types one sentence and watches the
-agent think, call a tool, and answer. If the hero is a static image with a "Try it"
-button, the page has failed — it becomes indistinguishable from every other AI
-landing page.
+#### Positioning — read this before designing anything on this page
 
-So the hero needs to accommodate: an input, a stream of response text arriving
-progressively, and a tool-status line that appears and disappears. It should look
-composed while empty and while full.
+This is **not** an OTA. It does not sell hotels, trains, cars, or attraction tickets,
+and it should not pretend to. What it does is decide *what is worth booking* — which
+place, which week, which flight, at which budget — and then hand off to whoever sells
+it (`providers/booking_links.py` already does the handoff).
 
-Below the hero:
-- Three capability cards: destination recommendations, real flight search, itinerary
-  and calendar export
-- A preview of a trip board (the shareable artefact)
-- A short technical section — stack, architecture, GitHub link. This is for audience
-  1 and should read as confident, not boastful.
+That makes the product **upstream of Traveloka, not a smaller copy of it.** Every
+design decision on this page follows from that sentence. A tab bar with seven
+verticals where four are dead would destroy the position in one glance; a page that
+is only a chat box gives the position away by looking like a toy.
+
+The three surfaces that are real, and therefore the only ones that get first-class
+treatment:
+
+| Surface | Backed by |
+|---|---|
+| Flights | `search_flights`, `search_flights_flexible` — Amadeus + Google Flights |
+| Destinations & inspiration | `recommend_destinations`, `get_destination_info`, `search_knowledge` |
+| Trip planning | the agent loop itself; itinerary lands in phase 5 |
+
+#### The hero: a search bar that thinks
+
+**The hero must contain a working agent, not a screenshot.** This is still the single
+most important decision on the page. If the hero is a static image with a "Try it"
+button, the page has failed.
+
+But a bare chat input is a cold start. A visitor who does not know what to type sees
+a blinking cursor and leaves. The fix is not to abandon the live agent — it is to give
+it the affordance an OTA search widget has: **visible machinery, obvious inputs, zero
+ambiguity about what the thing can do.**
+
+So the hero is one module with a segmented control, three modes:
+
+| Mode | Input | Fires |
+|---|---|---|
+| **Cari penerbangan** | From · To · Date(s) · Passengers | `search_flights` / `search_flights_flexible` |
+| **Cari inspirasi** | Facet chips: budget band, trip style, region, season | `recommend_destinations` |
+| **Tanya apa aja** | Free multiline text — the default | model decides |
+
+All three submit to the same place. **The form does not navigate to a search results
+page.** It seeds the agent with a structured tool call, and the hero morphs in place
+into a streaming answer with `ToolActivity` visible — real tool, real prices, roughly
+five seconds after landing. Then a "Lanjutkan di companion →" affordance carries the
+session into `/chat`.
+
+That is the whole trick, and it is worth stating plainly because it is what the design
+has to protect: **the search form and the AI are the same engine.** A user who fills in
+a form gets a conversation. A user who types a sentence gets the same tools. Neither
+path is the "lesser" one.
+
+Design consequences:
+
+- The hero has to look composed in four states: empty, form-filled, streaming, and
+  resolved-with-results. Resolved is the tallest — reserve for it, do not let the page
+  jump when the answer arrives.
+- Mode switching must not feel like three different products stapled together. Same
+  container, same submit affordance, only the input region changes.
+- The flight form is the densest thing on the page. It is also the most familiar, so
+  it can carry more density than anything else without reading as cluttered.
+
+#### Below the hero — the density layer
+
+This is what the current design is missing, and what makes an OTA feel like a real
+product rather than a landing page: **things to look at that are already answers.**
+
+1. **`DealRail` — "Berangkat dari Jakarta"**
+   A horizontal rail of real cheapest-fare cards to the curated destinations, origin
+   auto-detected (`providers/geolocation.py`) with a manual override. Real prices, but
+   **cached, not live** — see the constraint below. The single biggest "this is a real
+   travel product" win available, and honest, because the numbers are true.
+
+2. **`InspirationGrid` — "Mau liburan yang kayak gimana?"**
+   Tiles built directly on the `TravelType` enum — beach, mountain, cultural, city,
+   adventure, nature, foodie, shopping. Traveloka has a category row; the difference
+   is that every tile here is a live `recommend_destinations` query, not a landing
+   page for an SEO term.
+
+3. **`BudgetBandPicker` — "Budget kamu berapa sehari?"**
+   The four `BudgetCategory` bands as a row: under 500rb · 500rb–1jt · 1jt–2jt · di
+   atas 2jt. Indonesian travellers lead with budget far more often than with
+   destination, and no OTA lets them start there. This is a small component with an
+   unfairly good conversion story — put it high, not buried.
+
+4. **Three capability cards** — destination recommendations, real flight search,
+   itinerary and calendar export.
+
+5. **A preview of a trip board** (the shareable artefact).
+
+6. **A short technical section** — stack, architecture, GitHub link. For audience 1.
+   Confident, not boastful. It has more to say now: the seeded-tool-call architecture
+   in the hero is the most interesting thing in the codebase.
+
+#### Navigation
+
+A top nav in the OTA idiom — but only the real verticals: Penerbangan · Inspirasi ·
+Trip saya. No greyed-out tabs, no "coming soon" badges. An empty promise in the nav is
+worse than a shorter nav.
 
 Needs proper SEO and Open Graph treatment. It will be shared as a link.
 
@@ -84,6 +166,20 @@ Indonesian users will be.
 ---
 
 ## Components
+
+### Landing surface
+
+| Component | Notes |
+|---|---|
+| `SearchCommandBar` | The hero. Segmented control over three modes, one shared submit. Owns the empty → filled → streaming → resolved transition, so it must not be three components in a trench coat. |
+| `FlightSearchForm` | From · To · Date(s) · Passengers. Origin/destination are city names or IATA — `lookup_place` resolves either, so the field can stay forgiving. A "tanggal fleksibel" toggle switches the submit from `search_flights` to `search_flights_flexible`. |
+| `ExploreFacets` | Chips for budget band, trip style (multi-select), region, season. Every filter is optional — the tool takes no required arguments, and the UI should make that feel deliberate rather than unfinished. |
+| `BudgetBandPicker` | Four bands from `BudgetCategory`. Also reused inside `ExploreFacets`. IDR ranges, so the money treatment applies. |
+| `OriginPicker` | Auto-detected city with a visible, one-tap override. Detection is a guess and must be styled as a guess, never as a fact the user has to fight. |
+| `HeroLiveAnswer` | The morphed hero: streaming text, one or more `ToolActivity` rows, result cards, and the hand-off to `/chat`. Reuses `ChatBubble` and the result cards rather than reimplementing them. |
+| `DealRail` / `DealCard` | Snap-scrolling fare rail. Card carries destination, cheapest price in IDR, and a **staleness timestamp** — the prices are cached, and the card has to say so without undermining trust in them. |
+| `InspirationGrid` / `InspirationTile` | Eight `TravelType` tiles. Tile labels in Indonesian run long ("petualangan", "kuliner") — do not design to the width of "beach". |
+| `SiteNav` | Penerbangan · Inspirasi · Trip saya. Collapses to the command bar's mode switcher on mobile rather than duplicating it. |
 
 ### Core chat
 
@@ -191,6 +287,21 @@ These are not preferences. They come from how the thing actually works.
    numbers. `Rp 1.250.000` needs to stay readable in a card.
 7. **Dark mode is not optional.** Assume roughly half the audience for a developer
    portfolio views in dark.
+8. **The curated destination set is 15 places** — Yogyakarta, Lombok, Belitung,
+   Bandung, Malang, Kuala Lumpur, Ho Chi Minh City, Chiang Mai, Siem Reap, Penang,
+   Vientiane, Tokyo, Osaka, Kyoto, Fukuoka. Indonesia, Southeast Asia, Japan. Rails
+   and grids must look intentional at that size, not like a grid waiting to be
+   filled. Fifteen well-chosen places reads as curation; fifteen in a layout built
+   for two hundred reads as an empty database.
+9. **Landing-page prices are cached, not live.** A live rail would cost 15
+   destinations × up to 7 provider calls per page view. Deals are served from a
+   warmed cache with a visible "diperbarui N jam lalu". Design the staleness marker
+   as a normal, confident part of the card — hiding it is the only way this becomes
+   dishonest.
+10. **A form submission and a typed sentence enter the agent through the same door.**
+    The hero's structured modes seed a validated tool call; they do not bypass the
+    conversation. So every result the hero can show is a result the chat can also
+    show, and the components are shared rather than parallel.
 
 ---
 
@@ -205,6 +316,15 @@ handling of streaming answers and citations, Raycast's confidence in dark mode. 
 travel-agency aesthetics — no stock photos of beaches, no wanderlust script fonts.
 The product's value is judgement and real data, and it should look like it.
 
+One borrowed thing, deliberately: **the information density of an Indonesian OTA
+homepage.** Traveloka's landing page is busy, and that busyness is not a mistake —
+it signals capability to a user who is about to spend two million rupiah. Take the
+density and the structured-search affordance. Leave the gradients, the mascot
+illustrations, the promo confetti, and the seven-vertical tab bar.
+
+The target is what you would get if Linear built a travel product for Indonesia: dense
+but calm, every element load-bearing, nothing decorative pretending to be functional.
+
 ---
 
 ## What to deliver
@@ -214,3 +334,10 @@ The product's value is judgement and real data, and it should look like it.
 3. Tokens as CSS custom properties for `@theme`
 4. Specific attention to `ToolActivity` and `ApiKeyDialog` — these are the two
    pieces with no obvious precedent to copy
+5. The `SearchCommandBar` in all four of its states, and the transition between them.
+   This is the piece the whole landing page rests on: it has to read as a capable
+   search widget before it is used and as a live agent after. Getting only one of
+   those right is the most likely way this design fails.
+
+Implementation sequencing, the backend changes the hero requires, and the risks that
+come with them are in [`phase-4-plan.md`](./phase-4-plan.md).
