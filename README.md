@@ -120,10 +120,15 @@ The web app is not runnable yet — the Next.js scaffold lands in phase 4.
 | 1 | Agent core: LiteLLM, tool-calling, real streaming | ✅ |
 | 2 | RAG: Wikivoyage → ChromaDB, retrieval tool | ✅ |
 | 3 | Bring-your-own-key + rate limiting | ✅ |
-| 4 | Landing page + design system | ⬜ |
+| 4 | Landing page, design system, seeded tool calls | ⬜ |
 | 5 | Itinerary + calendar export (`.ics`) | ⬜ |
 | 6 | Shareable trip board | ⬜ |
 | 7 | Deploy + observability | ⬜ |
+
+Phase 4 is specified in [`docs/design-brief.md`](docs/design-brief.md) and
+[`docs/phase-4-plan.md`](docs/phase-4-plan.md). The landing page pairs the live agent
+with a structured search widget: the form does not navigate to a results page, it
+seeds the agent with a validated tool call and the answer streams in place.
 
 ## Earlier iterations
 
