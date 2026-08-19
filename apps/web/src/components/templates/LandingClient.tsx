@@ -115,7 +115,14 @@ export function LandingClient({
         />
       )}
 
-      {deals && <DealRail deals={deals} originLabel={originLabel(origin)} onRun={run} />}
+      {deals && (
+        <DealRail
+          deals={deals}
+          originLabel={originLabel(origin)}
+          onRun={run}
+          catalogue={catalogue}
+        />
+      )}
 
       <DemoSection />
 

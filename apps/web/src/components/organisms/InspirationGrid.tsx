@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { rupiahShort } from "@/lib/format";
 import { Price } from "@/components/molecules/Price";
 import { Section } from "@/components/molecules/Section";
+import { categoryStyle } from "@/components/molecules/TravelTypeMark";
 import { CompassScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { BudgetBand, FacetOption, ToolSeed } from "@/lib/types";
@@ -37,28 +38,9 @@ const EMOJI: Record<string, string> = {
 };
 
 /**
- * One hue per travel type.
- *
- * All eight sit at identical lightness and chroma in `globals.css` — only the
- * hue moves. That is what stops this reading as a pile of stickers: nothing is
- * louder than anything else, which is honest, because no travel type is more
- * important than another. Colour here is a label, not a ranking.
- *
- * Written as full class strings because Tailwind scans source text; a template
- * literal like `bg-cat-${value}-soft` produces no CSS at all.
+ * The per-type hues now live in `molecules/TravelTypeMark`, so the fare rail can
+ * label a destination with the same colour this grid uses for its tiles.
  */
-const CATEGORY_STYLE: Record<string, { tint: string; mark: string }> = {
-  beach: { tint: "bg-cat-beach-soft", mark: "text-cat-beach" },
-  mountain: { tint: "bg-cat-mountain-soft", mark: "text-cat-mountain" },
-  cultural: { tint: "bg-cat-cultural-soft", mark: "text-cat-cultural" },
-  city: { tint: "bg-cat-city-soft", mark: "text-cat-city" },
-  adventure: { tint: "bg-cat-adventure-soft", mark: "text-cat-adventure" },
-  nature: { tint: "bg-cat-nature-soft", mark: "text-cat-nature" },
-  foodie: { tint: "bg-cat-foodie-soft", mark: "text-cat-foodie" },
-  shopping: { tint: "bg-cat-shopping-soft", mark: "text-cat-shopping" },
-};
-
-const NEUTRAL_STYLE = { tint: "bg-surface-2", mark: "text-fg-muted" };
 
 export function InspirationGrid({
   travelTypes,
@@ -107,7 +89,7 @@ export function InspirationGrid({
     >
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {travelTypes.map((type) => {
-          const style = CATEGORY_STYLE[type.value] ?? NEUTRAL_STYLE;
+          const style = categoryStyle(type.value);
           return (
             <li key={type.value}>
               <button

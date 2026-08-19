@@ -401,6 +401,20 @@ The product's value is judgement and real data, and it should look like it.
 > origin in brand and arrival in warm.
 >
 > The four palette rules above stand unchanged.
+>
+> **A fifth rule, learned the hard way: an empty state must carry information,
+> not report its own emptiness.** The fare rail with a cold cache rendered eight
+> identical cards reading "harga belum tersimpan", and a reader looking at it
+> could not tell what the section was even for. The fare is genuinely unknown
+> until someone asks — but the fare was never the only real thing available. The
+> catalogue already knows each destination's daily cost, what kind of trip it is,
+> and why it is worth going, none of which needs a provider call. The cold state
+> now shows more than the warm one would, not less.
+>
+> This is also where the eight category hues finally earn their place: they were
+> designed in 4c and then used on exactly one screen. A destination that says what
+> kind of trip it is, in the colour that kind wears everywhere else, is doing the
+> work the palette was built for.
 
 One borrowed thing, deliberately: **the information density of an Indonesian OTA
 homepage.** Traveloka's landing page is busy, and that busyness is not a mistake —

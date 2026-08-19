@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!--
+    The same arc as components/illustration/Mark.tsx, redrawn for 16px.
+
+    Two differences from the component, both forced by size. The stroke is
+    heavier and the nodes are larger, because the component's proportions
+    disappear entirely at favicon scale. And the colours are literal rather than
+    var(--color-*): a favicon is rendered by browser chrome, outside the page,
+    where none of this project's custom properties exist.
+
+    The blue is brand-500 rather than the brand-600 the component uses. 600 is
+    the right weight against a white page and too dark against a dark browser
+    tab; 500 is the one value that stays legible on both, which matters more here
+    than matching the in-page mark exactly.
+  -->
+  <path d="M6 23C10 9 22 9 26 19" stroke="#1a7fc1" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="6" cy="23" r="4.5" fill="#1a7fc1"/>
+  <circle cx="26" cy="19" r="4.5" fill="#c2603f"/>
+</svg>

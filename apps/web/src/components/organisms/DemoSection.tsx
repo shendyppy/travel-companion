@@ -37,6 +37,7 @@ import { CalendarCheck, Filter, MessageCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Section } from "@/components/molecules/Section";
 import { Price } from "@/components/molecules/Price";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PlanScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import { useScrollSteps } from "@/hooks/useScrollSteps";
@@ -149,13 +150,35 @@ function Stage({ step, label }: { step: number; label: string }) {
   const { m } = useMessages();
 
   return (
-    <div className="grid min-h-64 gap-2.5" role="img" aria-label={label}>
+    // The height is fixed rather than min-, and generously: the four steps hold
+    // different amounts of content, and letting the panel resize under a sticky
+    // layout means the page shifts while you scroll it. Step 0 used to be a
+    // single line of text in a 256px box, which is what made the section read as
+    // empty — it is now the same shape as the steps after it.
+    <div className="grid h-[26rem] content-start gap-2.5 sm:h-[24rem]" role="img" aria-label={label}>
       <MockBar step={step} />
 
       {step === 0 && (
-        <p className="animate-fade px-1 pt-6 text-center text-sm text-fg-muted">
-          {m.demo.mockQuery}
-        </p>
+        <div className="animate-fade grid gap-2.5">
+          <p className="px-1 pt-2 text-sm text-fg-muted">{m.demo.mockQuery}</p>
+
+          {/* What the wait actually looks like. Skeletons rather than a spinner,
+              and shaped like the rows that replace them, so the transition into
+              step 1 is the placeholder filling in rather than one thing being
+              swapped for another. */}
+          {[0, 1, 2].map((row) => (
+            <div
+              key={row}
+              className="flex items-center gap-3 rounded-card border border-border bg-surface px-3 py-2.5"
+              style={{ opacity: 1 - row * 0.22 }}
+            >
+              <Skeleton className="size-7 shrink-0 rounded-md" />
+              <Skeleton className="h-3.5 w-10" />
+              <span className="h-px flex-1 bg-border" />
+              <Skeleton className="h-3.5 w-20" />
+            </div>
+          ))}
+        </div>
       )}
 
       {step >= 1 && (

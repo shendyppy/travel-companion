@@ -302,12 +302,24 @@
 }
 
 /* Hero atmosphere. Two soft washes — brand and warm — behind the type. Pure
-   CSS: no image request, no layout cost, and it recolours itself in dark mode
-   because both stops are tokens. */
+ * CSS: no image request, no layout cost, and it recolours itself in dark mode
+ * because both stops are tokens.
+ *
+ * It must be applied to a **full-width** element, never to the centred column.
+ * Painted on the `max-w-3xl` hero it drew a visible rectangle down both sides
+ * where the gradient stopped and the page background resumed — the wash needs to
+ * run edge to edge or it reads as a panel someone forgot to remove.
+ *
+ * The mask is the other half of the fix. Radial gradients fading to `transparent`
+ * still terminate at the element's bottom edge, which put a horizontal seam above
+ * the first section; fading the whole layer out over its lower half means there
+ * is no edge to see.
+ */
 @utility bg-mesh {
   background-image:
-    radial-gradient(60% 55% at 12% 0%, var(--color-accent-soft) 0%, transparent 62%),
-    radial-gradient(48% 48% at 92% 8%, var(--color-warm-tint) 0%, transparent 60%);
+    radial-gradient(75% 65% at 18% -15%, var(--color-accent-soft) 0%, transparent 72%),
+    radial-gradient(60% 55% at 85% -5%, var(--color-warm-tint) 0%, transparent 68%);
+  mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
 }
 
 /* Money gets one treatment everywhere: tabular figures so columns of rupiah
@@ -466,6 +478,25 @@
 @layer base {
   *, *::before, *::after {
     border-color: var(--color-border);
+  }
+
+  /* Tailwind v3 gave buttons `cursor: pointer` in preflight. v4 removed it, on
+     the grounds that the native default is `default` — which is true, and which
+     means every button on this site was silently showing an arrow. Nothing
+     errors, nothing looks broken in a screenshot, and the whole interface just
+     feels slightly dead under the hand.
+     Restored deliberately rather than by sprinkling `cursor-pointer` per
+     component, because the next button someone adds should not have to remember. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
   }
 
   html {

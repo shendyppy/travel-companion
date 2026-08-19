@@ -57,11 +57,14 @@ export function Hero({
   const { m, t } = useMessages();
 
   return (
-    // The mesh is two soft washes of brand and warm behind the type — pure CSS,
-    // no image request. It is the one place on the page allowed to be purely
-    // atmospheric, because a hero that is only a form on a flat background reads
-    // as an admin panel.
-    <section className="bg-mesh relative mx-auto w-full max-w-3xl px-5 pb-12 pt-12 sm:pt-20">
+    // The wash lives on a full-width layer behind the column, not on the column
+    // itself. Painted on `max-w-3xl` it stopped dead at 768px and drew a visible
+    // rectangle down both sides. `overflow-hidden` keeps it from ever adding a
+    // horizontal scrollbar, and `isolate` keeps the negative z-index from
+    // escaping past the header.
+    <section className="relative isolate overflow-hidden">
+      <div className="bg-mesh pointer-events-none absolute inset-x-0 -top-14 bottom-0 -z-10" aria-hidden />
+      <div className="relative mx-auto w-full max-w-3xl px-5 pb-12 pt-12 sm:pt-20">
       {/* Before a turn starts the block cascades in — illustration, headline,
           lead, 60ms apart. Once the agent is running the stagger comes off:
           re-animating the heading every time an answer arrives would be motion
@@ -140,13 +143,14 @@ export function Hero({
         </div>
       )}
 
-      {started && !agent.isStreaming && (
-        <ChatInput
-          className="mt-3"
-          onSend={(message) => run({ message } as Submission)}
-          placeholder={m.hero.followUp}
-        />
-      )}
+        {started && !agent.isStreaming && (
+          <ChatInput
+            className="mt-3"
+            onSend={(message) => run({ message } as Submission)}
+            placeholder={m.hero.followUp}
+          />
+        )}
+      </div>
     </section>
   );
 }
