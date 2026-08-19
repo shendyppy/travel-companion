@@ -32,7 +32,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import Request
@@ -125,16 +125,25 @@ class _MemoryCounter:
         self._counts[key] = (count, expires)
         return count
 
+    def read(self, key: str) -> int:
+        count, expires = self._counts.get(key, (0, 0.0))
+        return count if time.time() <= expires else 0
+
 
 _memory = _MemoryCounter()
 
 
-async def _incr(key: str, ttl: int) -> int:
-    """Increment a counter, returning the new value."""
+def _redis():
+    """The underlying Redis client, or None when the store is in-memory."""
     from src.session_store import get_session_store
 
     store = get_session_store()
-    redis = getattr(store, "_redis", None) or getattr(store, "redis", None)
+    return getattr(store, "_redis", None) or getattr(store, "redis", None)
+
+
+async def _incr(key: str, ttl: int) -> int:
+    """Increment a counter, returning the new value."""
+    redis = _redis()
 
     if redis is None:
         return _memory.incr(key, ttl)
@@ -149,6 +158,21 @@ async def _incr(key: str, ttl: int) -> int:
         # the in-memory one degrades the limit rather than the service.
         logger.warning("Rate limit counter unavailable, using in-memory: %s", exc)
         return _memory.incr(key, ttl)
+
+
+async def _read(key: str) -> int:
+    """Current value of a counter without touching it. Missing reads as zero."""
+    redis = _redis()
+
+    if redis is None:
+        return _memory.read(key)
+
+    try:
+        value = await redis.get(key)
+        return int(value) if value else 0
+    except Exception as exc:
+        logger.warning("Rate limit counter unreadable, using in-memory: %s", exc)
+        return _memory.read(key)
 
 
 async def check(request: Request) -> Access:
@@ -214,11 +238,104 @@ async def check(request: Request) -> Access:
     )
 
 
+# ==============================================================================
+# Provider quota
+#
+# Everything above bounds spend on the *LLM*. It does nothing for an endpoint
+# that reaches a paid flight provider without a model turn in front of it, and
+# /api/flights/search is the first of those: a caller with curl and a for-loop
+# over dates could drain the Amadeus allowance in minutes while the demo quota
+# sits untouched, because not one of those requests is a "message".
+#
+# Bringing your own LLM key buys nothing here either -- the key being spent is
+# the server's Amadeus key, not the visitor's.
+# ==============================================================================
+
+# Provider lookups per IP per hour. A real visitor searches a handful of routes
+# and then filters the results client-side, so this is generous for a person and
+# tight for a script.
+PROVIDER_HOURLY_LIMIT = int(os.getenv("PROVIDER_HOURLY_LIMIT", "40"))
+
+# Ceiling across everyone. Same reasoning as DEMO_GLOBAL_DAILY_LIMIT: per-IP
+# limits do not bound a bill, because IPs are cheap.
+PROVIDER_GLOBAL_DAILY_LIMIT = int(os.getenv("PROVIDER_GLOBAL_DAILY_LIMIT", "2000"))
+
+_PROVIDER_IP_TTL = 60 * 60
+_PROVIDER_GLOBAL_TTL = 60 * 60 * 26
+
+
+@dataclass
+class ProviderAccess:
+    """Decision for one potential provider call."""
+
+    allowed: bool
+    remaining: int
+    reason: Optional[str] = None
+
+
+def _provider_keys(request: Request) -> tuple[str, str]:
+    """(per-IP hourly key, global daily key). Both windows are fixed, not rolling."""
+    now = datetime.now()
+    return (
+        f"provider:ip:{_client_ip(request)}:{now:%Y-%m-%dT%H}",
+        f"provider:global:{now:%Y-%m-%d}",
+    )
+
+
+async def check_provider_call(request: Request) -> ProviderAccess:
+    """
+    May this request reach a flight provider?
+
+    Reads the counters without incrementing them, because a cache hit costs
+    nothing and should not spend anyone's allowance. Callers that actually go on
+    to hit the provider must follow up with `consume_provider_call`.
+    """
+    ip_key, global_key = _provider_keys(request)
+
+    if await _read(global_key) >= PROVIDER_GLOBAL_DAILY_LIMIT:
+        logger.warning("Global provider quota exhausted")
+        return ProviderAccess(
+            allowed=False,
+            remaining=0,
+            reason="Flight search is rested for today. Ask the companion instead -- it still works.",
+        )
+
+    used = await _read(ip_key)
+    remaining = max(0, PROVIDER_HOURLY_LIMIT - used)
+
+    if remaining == 0:
+        return ProviderAccess(
+            allowed=False,
+            remaining=0,
+            reason=(
+                f"You have run {PROVIDER_HOURLY_LIMIT} flight searches this hour. "
+                "Give it a few minutes -- results you already loaded still work."
+            ),
+        )
+
+    return ProviderAccess(allowed=True, remaining=remaining)
+
+
+async def consume_provider_call(request: Request) -> None:
+    """
+    Record one provider call. Call it only when the provider was really reached.
+
+    Split from the check so a cached answer is free. The gap between the two
+    lets simultaneous requests slip a call or two past the ceiling, which is
+    fine: this bounds a bill, and it does not need to be exact to do that.
+    """
+    ip_key, global_key = _provider_keys(request)
+    await _incr(ip_key, _PROVIDER_IP_TTL)
+    await _incr(global_key, _PROVIDER_GLOBAL_TTL)
+
+
 def quota_info() -> dict[str, object]:
     """Public description of the demo allowance, for the health endpoint."""
     return {
         "demo_daily_limit_per_ip": DEMO_DAILY_LIMIT,
         "demo_global_daily_limit": DEMO_GLOBAL_DAILY_LIMIT,
+        "provider_hourly_limit_per_ip": PROVIDER_HOURLY_LIMIT,
+        "provider_global_daily_limit": PROVIDER_GLOBAL_DAILY_LIMIT,
         "byok_header": API_KEY_HEADER,
         "byok_provider_header": PROVIDER_HEADER,
         "key_storage": "never stored; used for the duration of one request",
