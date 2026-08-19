@@ -17,9 +17,34 @@ travel-companion/
 │  ├─ api/        FastAPI — agent loop, tools, flight integrations
 │  └─ web/        Next.js — landing, chat, trip board
 └─ packages/
-   ├─ types/      TypeScript types generated from the FastAPI OpenAPI schema
-   └─ ui/         shared design system
+   └─ types/      TypeScript types generated from the FastAPI OpenAPI schema
 ```
+
+Components are grouped by what they are, not by which page they landed on first:
+
+```
+apps/web/src/components/
+├─ ui/            atoms — shadcn primitives, managed by its CLI
+├─ molecules/     one job, composes atoms, no domain knowledge
+├─ organisms/     a self-contained block that means something in this product
+├─ templates/     page compositions
+├─ illustration/  drawn scenes
+└─ i18n/          the message provider
+```
+
+What separates a molecule from an organism is behaviour, not size. `ToolResult`
+is twenty lines and is an organism, because it decides which card a given tool
+call deserves — that is knowledge about this product. `Price` is the same length
+and is a molecule, because it renders a number and knows nothing else.
+
+The earlier layout named folders after pages, which made "is this reused?"
+unanswerable at a glance. It was being reused: the price treatment existed in six
+copies, two of them disagreeing about whether to round.
+
+`templates/` holds the `*Client` components. They are page compositions but they
+still own their data, so they keep the honest name — splitting a data-free
+template out of them is worth doing when a second page wants the same layout, and
+not before.
 
 ## Stack
 
