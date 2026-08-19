@@ -24,12 +24,13 @@
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isoDateIn, rupiah, shortDate, staleness } from "@/lib/format";
-import { Section } from "./Section";
-import { OriginPicker } from "./OriginPicker";
+import { Price } from "@/components/molecules/Price";
+import { Section } from "@/components/molecules/Section";
+import { OriginPicker } from "@/components/molecules/OriginPicker";
 import { FareScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { DealsResponse, ToolSeed } from "@/lib/types";
-import type { Submission } from "./FlightSearchForm";
+import type { Submission } from "@/components/organisms/FlightSearchForm";
 
 export function DealRail({
   deals,
@@ -105,8 +106,8 @@ export function DealRail({
               <p className="font-medium">{deal.city}</p>
               <p className="text-xs text-fg-muted">{deal.country}</p>
 
-              <p className="tabular mt-4 font-mono text-lg font-semibold text-price">
-                {rupiah(deal.price_idr)}
+              <p className="mt-4">
+                <Price amount={deal.price_idr} size="lg" />
               </p>
               <p className="text-2xs text-fg-muted">
                 {deal.airline ?? m.deals.oneWay} ·{" "}

@@ -5,9 +5,9 @@ import { CloudOff, Timer } from "lucide-react";
 import { ApiError, fetchFlights } from "@/lib/api";
 import { parseFlightQuery } from "@/lib/flightsHref";
 import { getMessages, type Messages } from "@/lib/i18n";
-import { SiteNav } from "@/components/landing/SiteNav";
-import { SearchHeader } from "@/components/flights/SearchHeader";
-import { FlightsClient } from "@/components/flights/FlightsClient";
+import { SiteNav } from "@/components/organisms/SiteNav";
+import { SearchHeader } from "@/components/organisms/SearchHeader";
+import { FlightsClient } from "@/components/templates/FlightsClient";
 
 export async function generateMetadata({
   params,

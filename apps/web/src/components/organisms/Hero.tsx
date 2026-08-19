@@ -21,13 +21,13 @@
 
 import { useRef } from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
-import { ChatBubble } from "@/components/chat/ChatBubble";
-import { ChatInput } from "@/components/chat/ChatInput";
+import { ChatBubble } from "@/components/organisms/ChatBubble";
+import { ChatInput } from "@/components/organisms/ChatInput";
 import { Chip } from "@/components/ui/chip";
 import { RouteScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
-import { SearchCommandBar } from "./SearchCommandBar";
-import type { Submission } from "./FlightSearchForm";
+import { SearchCommandBar } from "@/components/organisms/SearchCommandBar";
+import type { Submission } from "@/components/organisms/FlightSearchForm";
 import type { Facets } from "@/lib/types";
 import type { AgentStreamState } from "@/hooks/useAgentStream";
 

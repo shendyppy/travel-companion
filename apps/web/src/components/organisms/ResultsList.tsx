@@ -17,10 +17,11 @@
 
 import { AlertTriangle, SearchX, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { humanDuration, longDate, rupiah, staleness } from "@/lib/format";
+import { humanDuration, longDate, staleness } from "@/lib/format";
+import { Price } from "@/components/molecules/Price";
 import { SORT_KEYS, type FlightFilters, type SortKey } from "@/lib/flightFilters";
 import { useMessages } from "@/components/i18n/MessagesProvider";
-import { FlightRow } from "./FlightRow";
+import { FlightRow } from "@/components/organisms/FlightRow";
 import type { Messages } from "@/lib/i18n";
 import type { FlightInfo, FlightSearchResponse } from "@/lib/types";
 
@@ -86,9 +87,7 @@ export function ResultsList({
               <>
                 <span className="text-fg-subtle"> · </span>
                 <span className="text-fg-muted">{m.flights.startingFrom} </span>
-                <span className="tabular font-mono font-semibold text-price">
-                  {rupiah(cheapest)}
-                </span>
+                <Price amount={cheapest} />
               </>
             )}
           </p>

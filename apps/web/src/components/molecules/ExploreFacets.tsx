@@ -18,7 +18,7 @@ import { Sparkles } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { Facets, ToolSeed } from "@/lib/types";
-import type { Submission } from "./FlightSearchForm";
+import type { Submission } from "@/components/organisms/FlightSearchForm";
 
 export function ExploreFacets({
   facets,

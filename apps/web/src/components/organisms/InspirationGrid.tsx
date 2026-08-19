@@ -18,11 +18,12 @@
 
 import { cn } from "@/lib/utils";
 import { rupiahShort } from "@/lib/format";
-import { Section } from "./Section";
+import { Price } from "@/components/molecules/Price";
+import { Section } from "@/components/molecules/Section";
 import { CompassScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { BudgetBand, FacetOption, ToolSeed } from "@/lib/types";
-import type { Submission } from "./FlightSearchForm";
+import type { Submission } from "@/components/organisms/FlightSearchForm";
 
 const EMOJI: Record<string, string> = {
   beach: "🏖️",
@@ -145,9 +146,7 @@ export function InspirationGrid({
                 className="flex h-full w-full flex-col items-start gap-1 rounded-card border border-border bg-surface p-4 text-left transition-[border-color,box-shadow,transform] duration-[--duration-fast] hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card"
               >
                 <span className="text-sm font-medium">{band.label}</span>
-                <span className="tabular font-mono text-lg font-semibold text-price">
-                  {band.range_label}
-                </span>
+                <Price size="lg">{band.range_label}</Price>
                 <span className="text-2xs text-fg-muted">{m.inspiration.perDay}</span>
               </button>
             </li>

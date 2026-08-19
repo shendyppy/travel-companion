@@ -19,8 +19,9 @@
 
 import { CalendarDays, CircleDashed, MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { clockTime, longDate, rupiah, stopsLabel } from "@/lib/format";
+import { clockTime, longDate, stopsLabel } from "@/lib/format";
 import { useMessages } from "@/components/i18n/MessagesProvider";
+import { Price } from "@/components/molecules/Price";
 import type { FlightInfo, Message } from "@/lib/types";
 
 interface Trip {
@@ -139,8 +140,8 @@ export function TripPanel({ messages, className }: { messages: Message[]; classN
                 {clockTime(trip.flight.departure_time, locale)} {trip.flight.origin} →{" "}
                 {clockTime(trip.flight.arrival_time, locale)} {trip.flight.destination}
               </p>
-              <p className="tabular mt-2 font-mono font-semibold text-price">
-                {rupiah(trip.flight.price)}
+              <p className="mt-2">
+                <Price amount={trip.flight.price} currency={trip.flight.currency} />
               </p>
               <p className="text-2xs text-fg-muted">
                 {stopsLabel(trip.flight.stops, m.common)}

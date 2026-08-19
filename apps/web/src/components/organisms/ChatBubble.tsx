@@ -16,9 +16,9 @@
 
 import { Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MessageMarkdown } from "./MessageMarkdown";
-import { ToolActivity } from "./ToolActivity";
-import { ToolResult } from "./ToolResult";
+import { MessageMarkdown } from "@/components/molecules/MessageMarkdown";
+import { ToolActivity } from "@/components/molecules/ToolActivity";
+import { ToolResult } from "@/components/organisms/ToolResult";
 import type { Message } from "@/lib/types";
 
 export function ChatBubble({

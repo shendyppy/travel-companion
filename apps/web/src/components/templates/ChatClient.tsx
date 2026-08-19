@@ -19,9 +19,9 @@ import { ChevronUp, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStream } from "@/hooks/useAgentStream";
 import { takeHandoff } from "@/lib/handoff";
-import { ChatBubble } from "@/components/chat/ChatBubble";
-import { ChatInput } from "@/components/chat/ChatInput";
-import { TripPanel, deriveTrip } from "@/components/chat/TripPanel";
+import { ChatBubble } from "@/components/organisms/ChatBubble";
+import { ChatInput } from "@/components/organisms/ChatInput";
+import { TripPanel, deriveTrip } from "@/components/organisms/TripPanel";
 import { Chip } from "@/components/ui/chip";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 

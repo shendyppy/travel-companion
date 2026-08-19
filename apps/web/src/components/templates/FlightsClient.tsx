@@ -25,8 +25,8 @@ import {
   type FlightFilters,
   type SortKey,
 } from "@/lib/flightFilters";
-import { FilterRail } from "./FilterRail";
-import { ResultsList } from "./ResultsList";
+import { FilterRail } from "@/components/organisms/FilterRail";
+import { ResultsList } from "@/components/organisms/ResultsList";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { FlightQuery, FlightSearchResponse } from "@/lib/types";
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { rupiah } from "@/lib/format";
 import { useMessages } from "@/components/i18n/MessagesProvider";
+import { Price } from "@/components/molecules/Price";
 import type { Destination } from "@/lib/types";
 
 /**
@@ -31,7 +31,7 @@ export function DestinationCard({
         </div>
         {daily ? (
           <div className="shrink-0 text-right">
-            <p className="tabular font-mono text-sm font-semibold text-price">{rupiah(daily)}</p>
+            <Price amount={daily} size="sm" className="block" />
             <p className="text-2xs text-fg-muted">per hari</p>
           </div>
         ) : null}

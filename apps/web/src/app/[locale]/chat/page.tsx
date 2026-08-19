@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getMessages } from "@/lib/i18n";
-import { ChatClient } from "./ChatClient";
+import { ChatClient } from "@/components/templates/ChatClient";
 
 export async function generateMetadata({
   params,

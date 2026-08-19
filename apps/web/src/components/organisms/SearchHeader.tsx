@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, PencilLine, Users } from "lucide-react";
 import { longDate } from "@/lib/format";
-import { FlightSearchForm } from "@/components/landing/FlightSearchForm";
+import { FlightSearchForm } from "@/components/organisms/FlightSearchForm";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import { flightsHref } from "@/lib/flightsHref";
 import type { FlightQuery } from "@/lib/types";

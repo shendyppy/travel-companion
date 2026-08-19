@@ -25,10 +25,10 @@
 import { useState } from "react";
 import { MessageCircle, Plane, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ChatInput } from "@/components/chat/ChatInput";
+import { ChatInput } from "@/components/organisms/ChatInput";
 import { useMessages } from "@/components/i18n/MessagesProvider";
-import { FlightSearchForm, type Submission } from "./FlightSearchForm";
-import { ExploreFacets } from "./ExploreFacets";
+import { FlightSearchForm, type Submission } from "@/components/organisms/FlightSearchForm";
+import { ExploreFacets } from "@/components/molecules/ExploreFacets";
 import type { Facets } from "@/lib/types";
 
 type Mode = "flights" | "explore" | "ask";

@@ -13,8 +13,8 @@
  * failure mode this design is trying to avoid.
  */
 
-import { FlightCard } from "./FlightCard";
-import { DestinationCard } from "./DestinationCard";
+import { FlightCard } from "@/components/organisms/FlightCard";
+import { DestinationCard } from "@/components/organisms/DestinationCard";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { Destination, FlightInfo, ToolActivity } from "@/lib/types";
 

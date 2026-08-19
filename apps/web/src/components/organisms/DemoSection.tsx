@@ -26,7 +26,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarCheck, Filter, MessageCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Section } from "./Section";
+import { Section } from "@/components/molecules/Section";
+import { Price } from "@/components/molecules/Price";
 import { PlanScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { Messages } from "@/lib/i18n";
@@ -181,9 +182,7 @@ function Stage({ step, label }: { step: number; label: string }) {
                 </span>
                 <span className="tabular text-sm font-medium">{flight.time}</span>
                 <span className="h-px flex-1 bg-border" />
-                <span className="tabular font-mono text-sm font-semibold text-price">
-                  {flight.price}
-                </span>
+                <Price size="sm">{flight.price}</Price>
               </div>
             );
           })}

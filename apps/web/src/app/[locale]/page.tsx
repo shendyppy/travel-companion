@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { fetchCatalogue, fetchDeals } from "@/lib/api";
 import { getMessages, LOCALES } from "@/lib/i18n";
-import { SiteNav } from "@/components/landing/SiteNav";
-import { BelowFold } from "@/components/landing/BelowFold";
-import { LandingClient } from "@/components/landing/LandingClient";
+import { SiteNav } from "@/components/organisms/SiteNav";
+import { BelowFold } from "@/components/organisms/BelowFold";
+import { LandingClient } from "@/components/templates/LandingClient";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 

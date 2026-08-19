@@ -27,13 +27,13 @@ import { useAgentStream } from "@/hooks/useAgentStream";
 import { stashHandoff } from "@/lib/handoff";
 import { flightsHref } from "@/lib/flightsHref";
 import { useMessages } from "@/components/i18n/MessagesProvider";
-import { Hero } from "./Hero";
-import { DealRail } from "./DealRail";
-import { DemoSection } from "./DemoSection";
-import { InspirationGrid } from "./InspirationGrid";
-import { OnboardingTour } from "./OnboardingTour";
-import { originLabel } from "./OriginPicker";
-import type { Submission } from "./FlightSearchForm";
+import { Hero } from "@/components/organisms/Hero";
+import { DealRail } from "@/components/organisms/DealRail";
+import { DemoSection } from "@/components/organisms/DemoSection";
+import { InspirationGrid } from "@/components/organisms/InspirationGrid";
+import { OnboardingTour } from "@/components/organisms/OnboardingTour";
+import { originLabel } from "@/components/molecules/OriginPicker";
+import type { Submission } from "@/components/organisms/FlightSearchForm";
 import type { CatalogueResponse, DealsResponse } from "@/lib/types";
 
 export function LandingClient({
