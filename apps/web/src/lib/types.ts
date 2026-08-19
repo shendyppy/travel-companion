@@ -105,7 +105,88 @@ export interface FlightInfo {
   price: number;
   currency: string;
   duration: string;
+  /** Null when the provider gave a duration nothing could parse. Sorts last. */
+  duration_minutes?: number | null;
+  /**
+   * Which time-of-day band this departs in. Assigned server-side so the filter
+   * checkbox and the flight it hides cannot disagree about where "sore" ends.
+   * Absent on flights that arrive through a chat tool result — only the results
+   * endpoint tags them.
+   */
+  departure_bucket?: DepartureBucket | null;
   stops: number;
+}
+
+// ---------------------------------------------------------------------------
+// Flight results (/flights)
+// ---------------------------------------------------------------------------
+
+/**
+ * Facets are computed server-side and describe only what the result set
+ * actually contains, so a control built from them can never filter to nothing.
+ * Deriving them here instead would put a second copy of the pricing logic in the
+ * browser, where it could quietly disagree with the first.
+ */
+export interface AirlineFacet {
+  code: string;
+  name: string;
+  count: number;
+  min_price: number | null;
+}
+
+export interface StopsFacet {
+  value: number;
+  count: number;
+}
+
+export type DepartureBucket = "pagi" | "siang" | "sore" | "malam";
+
+export interface DepartureBucketFacet {
+  value: DepartureBucket;
+  label: string;
+  count: number;
+}
+
+export interface FlightFacets {
+  airlines: AirlineFacet[];
+  stops: StopsFacet[];
+  price: { min: number; max: number } | null;
+  duration: { min_minutes: number; max_minutes: number } | null;
+  departure_buckets: DepartureBucketFacet[];
+}
+
+export interface FlightSearchResponse {
+  /** Resolved IATA, which may differ from what the user typed. */
+  origin: string;
+  destination: string;
+  departure_date: string;
+  return_date: string | null;
+  adults: number;
+  /**
+   * Non-empty when the provider answered with a different day than the one
+   * asked for — which the RapidAPI Google Flights upstream does. The fares are
+   * real; the date on them is not the requested one, and the page has to say so
+   * rather than quietly relabel them.
+   */
+  dates_returned: string[];
+  currency: string;
+  /** Everything the provider returned — this endpoint does not truncate. */
+  total_found: number;
+  flights: FlightInfo[];
+  facets: FlightFacets;
+  booking_links: Record<string, string>;
+  cached_at: string;
+  /** True when no provider was touched. Drives the staleness note. */
+  cached: boolean;
+}
+
+/** What the user typed, before the server resolved it. */
+export interface FlightQuery {
+  origin: string;
+  destination: string;
+  departure_date: string;
+  return_date?: string | null;
+  adults: number;
 }
 
 // ---------------------------------------------------------------------------

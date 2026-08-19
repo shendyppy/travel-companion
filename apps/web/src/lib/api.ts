@@ -8,7 +8,14 @@
  * optionally the user's own API key in a header.
  */
 
-import type { CatalogueResponse, DealsResponse, StreamEvent, ToolSeed } from "./types";
+import type {
+  CatalogueResponse,
+  DealsResponse,
+  FlightQuery,
+  FlightSearchResponse,
+  StreamEvent,
+  ToolSeed,
+} from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -27,9 +34,20 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { Accept: "application/json", ...init?.headers },
   });
+
   if (!response.ok) {
-    throw new ApiError(`${path} returned ${response.status}`, response.status);
+    // The API answers refusals with `{ "error": "..." }`, and that sentence is
+    // written to be read by a user — "you have run 40 flight searches this
+    // hour". Dropping it in favour of the status code would leave the page with
+    // nothing to say beyond "something went wrong".
+    const reason = await response
+      .json()
+      .then((body) => (body as { error?: string })?.error)
+      .catch(() => undefined);
+
+    throw new ApiError(reason ?? `${path} returned ${response.status}`, response.status);
   }
+
   return (await response.json()) as T;
 }
 
@@ -56,6 +74,33 @@ export function fetchDeals(origin?: string): Promise<DealsResponse> {
   const query = origin ? `?origin=${encodeURIComponent(origin)}` : "";
   return getJson<DealsResponse>(`/api/deals${query}`, {
     next: { revalidate: 900 },
+  } as RequestInit);
+}
+
+/**
+ * Every flight for one route and date, with the facets to filter them.
+ *
+ * Not cached by Next: unlike the catalogue and the deals rail, this is a
+ * specific answer to a specific question, and a fare the user is about to act on
+ * should not be served from a page cache on top of the fifteen-minute one the
+ * API already keeps. The API's cache is the one place staleness is tracked, and
+ * `cached_at` in the response is what the page displays.
+ *
+ * Throws `ApiError` on 429 (provider rate limit) and 502 (provider failure).
+ * Both are ordinary outcomes the page renders as an explanation, so callers are
+ * expected to catch rather than let them bubble.
+ */
+export function fetchFlights(query: FlightQuery): Promise<FlightSearchResponse> {
+  const params = new URLSearchParams({
+    origin: query.origin,
+    destination: query.destination,
+    departure_date: query.departure_date,
+    adults: String(query.adults),
+  });
+  if (query.return_date) params.set("return_date", query.return_date);
+
+  return getJson<FlightSearchResponse>(`/api/flights/search?${params}`, {
+    cache: "no-store",
   } as RequestInit);
 }
 
