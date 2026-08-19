@@ -1,6 +1,20 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Do not run an implicit `pnpm install` before every `pnpm run`.
+#
+# pnpm's default is to check node_modules against the lockfile first and install
+# if it disagrees. Inside `turbo run dev` that is actively harmful: turbo spawns
+# its tasks without a TTY, so when the install decides it needs to recreate
+# node_modules it has no way to ask, and the whole dev command dies with
+# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY instead of starting the servers.
+#
+# The disagreement itself usually means two different pnpm builds have touched
+# this tree -- on Windows `C:\Program Files\nodejs` is an nvm symlink, so
+# switching Node versions silently switches pnpm too. Installing is a thing to
+# do deliberately, not a side effect of running a script.
+verifyDepsBeforeRun: false
 minimumReleaseAgeExclude:
   - '@next/env@16.3.1'
   - '@next/swc-darwin-arm64@16.3.1'

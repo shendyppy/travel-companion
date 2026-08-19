@@ -1,0 +1,11 @@
+{
+  "name": "@travel/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Workspace shim. The API is Python; this file exists so pnpm registers apps/api and turbo can start it alongside the web app. Without it, `pnpm dev` silently runs only Next and the frontend talks to nothing.",
+  "scripts": {
+    "dev": "uv run uvicorn src.api:app --reload --port 8000",
+    "test": "uv run pytest",
+    "index": "uv run python -m scripts.build_index"
+  }
+}
