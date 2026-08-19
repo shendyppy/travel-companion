@@ -31,6 +31,37 @@ When someone asks "kenapa nggak ada hotel?", the answer is not "belum sempat" �
 that a recommendation engine that also takes a booking fee has a conflict of interest,
 and this one does not. Write that down somewhere on the page.
 
+### The results page amendment
+
+Everything above still holds, with one exception that landed after the fact.
+
+**A fixed-date flight search now navigates to `/flights`.** The claim it contradicts —
+"the form does not navigate to a search results page" — was right about the *general*
+case and wrong about this one. A flight search returns twenty near-identical options
+that only become a decision once you can filter them by airline, sort them by time, and
+see how much the 06:10 costs over the 13:40. That is a table. A hero morphing into a
+table is a worse version of a page that can simply exist, and it cannot hold sort state,
+survive a refresh, or be pasted into a group chat.
+
+What did *not* change, and is the reason this is an amendment rather than a reversal:
+
+- **Same engine, same tool, same arguments.** `/flights` calls `search_and_normalize`,
+  which is what `search_flights` calls. There is no second path to a provider.
+- **Everything else still answers in place.** Flexible dates, inspiration, budget bands,
+  and free text all still stream into the hero. Flexible dates in particular stay: a date
+  range answers "when is it cheapest", which is a sentence, not a table.
+- **The agent reads the same page.** From phase B the companion dock seeds itself from
+  the results URL, so asking "yang mana paling worth it?" reasons over the list on
+  screen. Navigating is not leaving the agent behind — it is giving it something to look
+  at.
+
+Two implementation notes worth carrying forward:
+
+| Detail | Why |
+|---|---|
+| `MAX_RESULTS = 8` stays on the tool and is *not* used by the page | It is a token budget — those results are billed as model context. A page has no tokens to budget. The two ceilings are different on purpose. |
+| `/api/flights/search` may call a provider on the request path | Unlike `/api/deals`, a person typed this route and is waiting. The guard is a per-IP hourly limit on provider calls (`access.check_provider_call`) plus a 15-minute cache; a cached answer spends no allowance. The demo LLM quota does not bound this endpoint at all — no model turn is involved. |
+
 ---
 
 ## Backend work

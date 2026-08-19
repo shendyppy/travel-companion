@@ -48,6 +48,15 @@ design decision on this page follows from that sentence. A tab bar with seven
 verticals where four are dead would destroy the position in one glance; a page that
 is only a chat box gives the position away by looking like a toy.
 
+> **Amended in phase 4b.** "Upstream, not a copy" still holds and is still the
+> whole position. What changed is where flight results live: a fixed-date flight
+> search now navigates to `/flights` and renders a filterable list, because twenty
+> flights compared by airline, time, and stops is genuinely a table, and a hero
+> morphing into a table is a worse version of a page that can just exist. The rule
+> below about the form not navigating survives everywhere else — flexible dates,
+> inspiration, and free text all still answer in place. See
+> [`phase-4-plan.md`](./phase-4-plan.md#the-results-page-amendment).
+
 The three surfaces that are real, and therefore the only ones that get first-class
 treatment:
 
@@ -99,8 +108,28 @@ Design consequences:
 
 #### Below the hero — the density layer
 
-This is what the current design is missing, and what makes an OTA feel like a real
-product rather than a landing page: **things to look at that are already answers.**
+> **Amended after 4c.** The order below was wrong, and a real reader found it in one
+> look: the fare rail came first, so the page showed prices to Bali before asking
+> whether you wanted a beach at all. Someone without a destination cannot use a fare
+> rail.
+>
+> The sections are now ordered by the question a visitor is actually holding, and each
+> is numbered on screen so the sequence is visible rather than implied:
+>
+> | | Section | Answers |
+> |---|---|---|
+> | 01 | Inspiration | "no idea yet — where should I go?" |
+> | 02 | Fare rail | "I know where — what does it cost from here?" |
+> | 03 | Demo | "so what do I actually walk away with?" |
+> | 04 | Positioning | "what do you get out of this?" |
+>
+> Two things below were **deleted rather than reordered**. The three capability cards
+> described what the demo section now shows, and showing beats telling. The "cara
+> kerjanya" stack table answered a question nobody planning a holiday has ever asked;
+> it lives in the README, where an engineer will actually look for it.
+
+This is what makes an OTA feel like a real product rather than a landing page:
+**things to look at that are already answers.**
 
 1. **`DealRail` — "Berangkat dari Jakarta"**
    A horizontal rail of real cheapest-fare cards to the curated destinations, origin
@@ -315,6 +344,32 @@ Reference points worth stealing from: Linear's density and restraint, Perplexity
 handling of streaming answers and citations, Raycast's confidence in dark mode. Not
 travel-agency aesthetics — no stock photos of beaches, no wanderlust script fonts.
 The product's value is judgement and real data, and it should look like it.
+
+> **Amended after 4c.** The first build followed this section too literally and came out
+> correct but cold: one blue ramp, two animations, nothing to look at. The rule was
+> never "no colour" — it was "no decoration pretending to be function". Those are
+> different, and the page needed the second without the first.
+>
+> What the palette is now, and the boundary that keeps it from becoming an OTA:
+>
+> - **Two ramps.** Brand (ocean, hue 236) and warm (terracotta, hue 32). Two
+>   complementary hues read as a decision; a scattering reads as indecision. The warm
+>   one is deliberately clear of `--color-warning` so an accent is never mistaken for
+>   an alarm.
+> - **Eight category hues**, one per `TravelType`, all at *identical* lightness and
+>   chroma — only hue moves. That is what makes eight colours a family rather than a
+>   pile of stickers, and it is honest: no travel type outranks another, so none of
+>   them should look louder.
+> - **Illustration is geometry, drawn here, in `components/illustration/`.** Still no
+>   photographs and no mascots. Every stroke uses a token, so dark mode needs no second
+>   asset.
+> - **Motion is entrance and atmosphere only** — sections arriving as you scroll, a
+>   six-pixel drift on one illustration. Nothing loops in the corner of the eye, and
+>   every path honours `prefers-reduced-motion`.
+>
+> Anything beyond those four needs a reason that is not taste. The target is still
+> "Linear built a travel product for Indonesia", just with the warmth that description
+> always implied.
 
 One borrowed thing, deliberately: **the information density of an Indonesian OTA
 homepage.** Traveloka's landing page is busy, and that busyness is not a mistake —
