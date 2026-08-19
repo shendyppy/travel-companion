@@ -6,13 +6,14 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel run dev",
+    "dev": "concurrently --kill-others --names api,web --prefix-colors magenta,cyan \"pnpm --filter @travel/api dev\" \"pnpm --filter @travel/web dev\"",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "types:generate": "turbo run generate --filter=@travel/types"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "turbo": "^2.0.0"
   }
 }
