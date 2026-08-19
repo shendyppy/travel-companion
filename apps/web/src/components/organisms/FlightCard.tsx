@@ -1,8 +1,8 @@
 "use client";
 
-import { Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMessages } from "@/components/i18n/MessagesProvider";
+import { AirlineMark } from "@/components/molecules/AirlineMark";
 import { FlightLeg } from "@/components/molecules/FlightLeg";
 import { Price } from "@/components/molecules/Price";
 import { Pill } from "@/components/molecules/Pill";
@@ -28,9 +28,10 @@ export function FlightCard({ flight, cheapest }: { flight: FlightInfo; cheapest?
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-6 shrink-0 place-items-center rounded-md bg-accent-soft">
-            <Plane className="size-3.5 text-accent" aria-hidden />
-          </span>
+          {/* The carrier tile rather than a generic plane icon, so a card in the
+              conversation and a row on the results page identify the same
+              airline the same way. */}
+          <AirlineMark code={flight.airline_code} name={flight.airline} className="size-6" />
           <span className="truncate text-sm font-medium">{flight.airline}</span>
         </div>
         {cheapest && <Pill>{m.flights.cheapest}</Pill>}

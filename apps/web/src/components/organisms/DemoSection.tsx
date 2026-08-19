@@ -37,6 +37,7 @@ import { CalendarCheck, Filter, MessageCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Section } from "@/components/molecules/Section";
 import { Price } from "@/components/molecules/Price";
+import { AirlineMark } from "@/components/molecules/AirlineMark";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlanScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
@@ -203,9 +204,7 @@ function Stage({ step, label }: { step: number; label: string }) {
                 )}
                 style={{ animationDelay: `${index * 70}ms` }}
               >
-                <span className="tabular grid size-7 shrink-0 place-items-center rounded-md bg-surface-2 font-mono text-2xs font-semibold text-fg-muted">
-                  {flight.code}
-                </span>
+                <AirlineMark code={flight.code} className="size-7" />
                 <span className="tabular text-sm font-medium">{flight.time}</span>
                 <span className="h-px flex-1 bg-border" />
                 <Price size="sm">{flight.price}</Price>

@@ -415,6 +415,16 @@ The product's value is judgement and real data, and it should look like it.
 > designed in 4c and then used on exactly one screen. A destination that says what
 > kind of trip it is, in the colour that kind wears everywhere else, is doing the
 > work the palette was built for.
+>
+> **And a sixth: no third-party marks, for the same reason as no photographs.**
+> A fare list wants airline logos, and it cannot have them — they are trademarks
+> this project has no licence to redistribute, and hotlinking a logo CDN would put
+> an external request on a page that currently makes none. What a reader actually
+> scans for is "same airline as the row above", and a carrier hue answers that
+> without borrowing anyone's mark. The hues follow the category rule exactly:
+> identical lightness and chroma, only hue moves. Real brand colours vary wildly
+> in saturation, and using them raw would build a list where Lion Air shouts and
+> Garuda whispers — a ranking nobody chose.
 
 One borrowed thing, deliberately: **the information density of an Indonesian OTA
 homepage.** Traveloka's landing page is busy, and that busyness is not a mistake —

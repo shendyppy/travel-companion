@@ -3,6 +3,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMessages } from "@/components/i18n/MessagesProvider";
+import { AirlineMark } from "@/components/molecules/AirlineMark";
 import { FlightLeg } from "@/components/molecules/FlightLeg";
 import { Price } from "@/components/molecules/Price";
 import { Pill } from "@/components/molecules/Pill";
@@ -42,12 +43,7 @@ export function FlightRow({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
         <div className="flex min-w-0 items-center gap-2.5 sm:w-44">
-          <span
-            className="tabular grid size-8 shrink-0 place-items-center rounded-md bg-surface-2 font-mono text-2xs font-semibold text-fg-muted"
-            aria-hidden
-          >
-            {flight.airline_code}
-          </span>
+          <AirlineMark code={flight.airline_code} name={flight.airline} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{flight.airline}</p>
             {(cheapest || fastest) && (

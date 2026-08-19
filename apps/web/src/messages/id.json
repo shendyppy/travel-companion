@@ -47,7 +47,12 @@
     "flexible": "Tanggal saya fleksibel — cariin yang paling murah",
     "messageFixed": "Cari penerbangan {origin} ke {destination} tanggal {date}{who}",
     "messageFlexible": "Cari penerbangan termurah {origin} ke {destination} antara {start} sampai {end}{who}",
-    "messageWho": ", {n} orang"
+    "messageReturn": "Cari penerbangan {origin} ke {destination} berangkat {date}, pulang {returnDate}{who}",
+    "messageWho": ", {n} orang",
+    "tripType": "Jenis perjalanan",
+    "oneWay": "Sekali jalan",
+    "roundTrip": "Pulang-pergi",
+    "returnDate": "Tanggal pulang"
   },
   "explore": {
     "budget": "Budget per hari",

@@ -47,7 +47,12 @@
     "flexible": "My dates are flexible — find me the cheapest",
     "messageFixed": "Find flights from {origin} to {destination} on {date}{who}",
     "messageFlexible": "Find the cheapest flight from {origin} to {destination} between {start} and {end}{who}",
-    "messageWho": ", {n} people"
+    "messageReturn": "Find flights from {origin} to {destination} leaving {date}, returning {returnDate}{who}",
+    "messageWho": ", {n} people",
+    "tripType": "Trip type",
+    "oneWay": "One way",
+    "roundTrip": "Return",
+    "returnDate": "Return date"
   },
   "explore": {
     "budget": "Budget per day",

@@ -446,6 +446,21 @@
   }
 }
 
+/* The carrier tile in a fare list. Takes `--airline-hue` inline and supplies
+ * everything else, so the two values that must stay disciplined — lightness and
+ * chroma — live here rather than in a component where they could drift per
+ * airline. Dark mode lifts the mark and drops the tint, exactly as the category
+ * hues do, which is why this is not just an inline style. */
+@utility airline-tile {
+  background-color: oklch(96% 0.030 var(--airline-hue));
+  color: oklch(52% 0.125 var(--airline-hue));
+
+  @variant dark {
+    background-color: oklch(29% 0.050 var(--airline-hue));
+    color: oklch(76% 0.130 var(--airline-hue));
+  }
+}
+
 /* Physical feedback on press.
  *
  * Nothing in this interface acknowledged a click before — hover states

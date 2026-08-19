@@ -80,12 +80,24 @@ export function FlightSearchForm({
   const [origin, setOrigin] = useState(initial?.origin ?? "Jakarta");
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [departure, setDeparture] = useState(initial?.departure_date ?? isoDateIn(30));
+  const [returnDate, setReturnDate] = useState(initial?.return_date ?? isoDateIn(37));
+  const [roundTrip, setRoundTrip] = useState(Boolean(initial?.return_date));
   const [rangeEnd, setRangeEnd] = useState(isoDateIn(37));
   const [flexible, setFlexible] = useState(false);
   const [adults, setAdults] = useState(initial?.adults ?? 1);
   const { m, t, locale } = useMessages();
 
   const ready = origin.trim() && destination.trim();
+
+  // A return leg and a flexible departure window are different searches, not two
+  // options on one. Flexible probes a range of *departure* dates for the cheapest
+  // single day; asking that question about a round trip means pricing a grid, not
+  // a list, which is not what the tool behind this does. Picking one clears
+  // the other rather than letting an impossible combination sit on screen.
+  const chooseRoundTrip = (next: boolean) => {
+    setRoundTrip(next);
+    if (next) setFlexible(false);
+  };
 
   const submit = () => {
     if (!ready || busy) return;
@@ -110,6 +122,10 @@ export function FlightSearchForm({
             origin: origin.trim(),
             destination: destination.trim(),
             departure_date: departure,
+            // Only sent when asked for. The tool prices a one-way search unless
+            // it sees this, and passing it always would silently double what
+            // every fare on the results page means.
+            ...(roundTrip ? { return_date: returnDate } : {}),
             adults,
           },
         };
@@ -127,12 +143,20 @@ export function FlightSearchForm({
           end: shortDate(rangeEnd, locale),
           who,
         })
-      : t(m.flightForm.messageFixed, {
-          origin,
-          destination,
-          date: shortDate(departure, locale),
-          who,
-        });
+      : roundTrip
+        ? t(m.flightForm.messageReturn, {
+            origin,
+            destination,
+            date: shortDate(departure, locale),
+            returnDate: shortDate(returnDate, locale),
+            who,
+          })
+        : t(m.flightForm.messageFixed, {
+            origin,
+            destination,
+            date: shortDate(departure, locale),
+            who,
+          });
 
     onSubmit({
       message,
@@ -143,6 +167,7 @@ export function FlightSearchForm({
             origin: origin.trim(),
             destination: destination.trim(),
             departure_date: departure,
+            return_date: roundTrip ? returnDate : null,
             adults,
           },
     });
@@ -150,6 +175,36 @@ export function FlightSearchForm({
 
   return (
     <div className="grid gap-3">
+      {/* Trip type leads, because it changes what the rest of the form asks for.
+          Two segments rather than a checkbox: "pulang-pergi" is a choice between
+          two kinds of trip, and a lone unticked box reads as an optional extra
+          on a one-way search that was never actually the default anyone chose. */}
+      <div
+        className="inline-flex w-fit rounded-lg border border-border bg-surface-2 p-0.5"
+        role="group"
+        aria-label={m.flightForm.tripType}
+      >
+        {[
+          { on: false, label: m.flightForm.oneWay },
+          { on: true, label: m.flightForm.roundTrip },
+        ].map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => chooseRoundTrip(option.on)}
+            aria-pressed={roundTrip === option.on}
+            className={cn(
+              "rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors duration-[--duration-fast]",
+              roundTrip === option.on
+                ? "bg-surface text-fg shadow-card"
+                : "text-fg-muted hover:text-fg",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={m.flightForm.from}>
           <input
@@ -171,16 +226,39 @@ export function FlightSearchForm({
         </Field>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+      <div
+        className={cn(
+          "grid gap-3",
+          roundTrip ? "sm:grid-cols-[1fr_1fr_1fr_auto]" : "sm:grid-cols-[1fr_1fr_auto]",
+        )}
+      >
         <Field label={flexible ? m.flightForm.fromDate : m.flightForm.departureDate}>
           <input
             type="date"
             className={cn(inputClass, "tabular")}
             value={departure}
             min={isoDateIn(0)}
-            onChange={(e) => setDeparture(e.target.value)}
+            onChange={(e) => {
+              setDeparture(e.target.value);
+              // A return before the departure is not a trip. Dragging the
+              // outbound past the inbound pushes the inbound along rather than
+              // waiting for the browser to reject it on submit.
+              if (roundTrip && returnDate < e.target.value) setReturnDate(e.target.value);
+            }}
           />
         </Field>
+
+        {roundTrip && (
+          <Field label={m.flightForm.returnDate}>
+            <input
+              type="date"
+              className={cn(inputClass, "tabular")}
+              value={returnDate}
+              min={departure}
+              onChange={(e) => setReturnDate(e.target.value)}
+            />
+          </Field>
+        )}
 
         {flexible ? (
           <Field label={m.flightForm.toDate}>
@@ -225,7 +303,9 @@ export function FlightSearchForm({
         </div>
       </div>
 
-      {allowFlexible && (
+      {/* Hidden on a round trip rather than disabled: a control that cannot be
+          used is noise, and there is nothing here to explain that would help. */}
+      {allowFlexible && !roundTrip && (
         <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-fg-muted">
           <input
             type="checkbox"
