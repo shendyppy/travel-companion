@@ -20,6 +20,7 @@
 import { CalendarDays, CircleDashed, MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clockTime, longDate, rupiah, stopsLabel } from "@/lib/format";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { FlightInfo, Message } from "@/lib/types";
 
 interface Trip {
@@ -74,6 +75,7 @@ export function deriveTrip(messages: Message[]): Trip {
 }
 
 export function TripPanel({ messages, className }: { messages: Message[]; className?: string }) {
+  const { m, t, locale } = useMessages();
   const trip = deriveTrip(messages);
   const steps = [
     Boolean(trip.destination),
@@ -87,7 +89,7 @@ export function TripPanel({ messages, className }: { messages: Message[]; classN
     <aside className={cn("flex flex-col gap-4", className)}>
       <header>
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-semibold tracking-tight">Trip kamu</h2>
+          <h2 className="font-semibold tracking-tight">{m.trip.title}</h2>
           <span className="tabular text-xs text-fg-muted">{done}/4</span>
         </div>
         <div
@@ -96,7 +98,7 @@ export function TripPanel({ messages, className }: { messages: Message[]; classN
           aria-valuenow={done}
           aria-valuemin={0}
           aria-valuemax={4}
-          aria-label="Kelengkapan rencana"
+          aria-label={m.trip.progress}
         >
           {steps.map((filled, i) => (
             <span
@@ -111,45 +113,46 @@ export function TripPanel({ messages, className }: { messages: Message[]; classN
       </header>
 
       {done === 0 ? (
-        <EmptyState />
+        <EmptyState
+          lead={m.trip.emptyLead}
+          steps={[m.trip.destination, m.trip.date, m.trip.flight, m.trip.itinerary]}
+        />
       ) : (
         <div className="grid gap-3">
           {trip.destination && (
-            <Section icon={MapPin} label="Destinasi">
+            <Section icon={MapPin} label={m.trip.destination}>
               <p className="font-medium">{trip.destination}</p>
               {trip.country && <p className="text-sm text-fg-muted">{trip.country}</p>}
             </Section>
           )}
 
           {trip.departureDate && (
-            <Section icon={CalendarDays} label="Tanggal">
-              <p className="font-medium">{longDate(trip.departureDate)}</p>
+            <Section icon={CalendarDays} label={m.trip.date}>
+              <p className="font-medium">{longDate(trip.departureDate, locale)}</p>
             </Section>
           )}
 
           {trip.flight && (
-            <Section icon={Plane} label="Penerbangan">
+            <Section icon={Plane} label={m.trip.flight}>
               <p className="font-medium">{trip.flight.airline}</p>
               <p className="tabular mt-1 text-sm text-fg-muted">
-                {clockTime(trip.flight.departure_time)} {trip.flight.origin} →{" "}
-                {clockTime(trip.flight.arrival_time)} {trip.flight.destination}
+                {clockTime(trip.flight.departure_time, locale)} {trip.flight.origin} →{" "}
+                {clockTime(trip.flight.arrival_time, locale)} {trip.flight.destination}
               </p>
               <p className="tabular mt-2 font-mono font-semibold text-price">
                 {rupiah(trip.flight.price)}
               </p>
               <p className="text-2xs text-fg-muted">
-                {stopsLabel(trip.flight.stops)}
+                {stopsLabel(trip.flight.stops, m.common)}
                 {trip.flightCount && trip.flightCount > 1
-                  ? ` · ${trip.flightCount} opsi ditemukan`
+                  ? t(m.trip.optionsFound, { n: trip.flightCount })
                   : ""}
               </p>
             </Section>
           )}
 
-          <Section icon={CircleDashed} label="Itinerary" muted>
-            <p className="text-sm text-fg-muted">
-              Belum disusun. Minta aja: &ldquo;bikinin itinerary 4 hari&rdquo;.
-            </p>
+          <Section icon={CircleDashed} label={m.trip.itinerary} muted>
+            <p className="text-sm text-fg-muted">{m.trip.itineraryEmpty}</p>
           </Section>
         </div>
       )}
@@ -184,15 +187,12 @@ function Section({
   );
 }
 
-function EmptyState() {
+function EmptyState({ lead, steps }: { lead: string; steps: string[] }) {
   return (
     <div className="rounded-card border border-dashed border-border p-5">
-      <p className="text-sm text-fg-muted">
-        Panel ini keisi sendiri sambil kamu ngobrol — destinasi dulu, terus tanggal,
-        penerbangan, baru itinerary.
-      </p>
+      <p className="text-sm text-fg-muted">{lead}</p>
       <ol className="mt-4 grid gap-2 text-sm text-fg-subtle">
-        {["Destinasi", "Tanggal", "Penerbangan", "Itinerary"].map((step, i) => (
+        {steps.map((step, i) => (
           <li key={step} className="flex items-center gap-2.5">
             <span className="tabular grid size-5 shrink-0 place-items-center rounded-full border border-border text-2xs">
               {i + 1}

@@ -1,6 +1,9 @@
+"use client";
+
 import { Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clockTime, humanDuration, rupiah, stopsLabel } from "@/lib/format";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { FlightInfo } from "@/lib/types";
 
 /**
@@ -12,6 +15,8 @@ import type { FlightInfo } from "@/lib/types";
  * uniform so the distinction reads.
  */
 export function FlightCard({ flight, cheapest }: { flight: FlightInfo; cheapest?: boolean }) {
+  const { m, locale } = useMessages();
+
   return (
     <div
       className={cn(
@@ -28,7 +33,7 @@ export function FlightCard({ flight, cheapest }: { flight: FlightInfo; cheapest?
         </div>
         {cheapest && (
           <span className="shrink-0 rounded-pill bg-accent-soft px-2 py-0.5 text-2xs font-medium text-accent">
-            Termurah
+            {m.flights.cheapest}
           </span>
         )}
       </div>
@@ -36,24 +41,24 @@ export function FlightCard({ flight, cheapest }: { flight: FlightInfo; cheapest?
       <div className="flex items-center gap-3">
         <div>
           <p className="tabular text-lg font-semibold leading-none">
-            {clockTime(flight.departure_time)}
+            {clockTime(flight.departure_time, locale)}
           </p>
           <p className="mt-1 font-mono text-xs text-fg-muted">{flight.origin}</p>
         </div>
 
         <div className="flex flex-1 flex-col items-center gap-1">
-          <span className="text-2xs text-fg-muted">{humanDuration(flight.duration)}</span>
+          <span className="text-2xs text-fg-muted">{humanDuration(flight.duration, m.common)}</span>
           <div className="flex w-full items-center gap-1" aria-hidden>
             <span className="size-1 rounded-full bg-border-strong" />
             <span className="h-px flex-1 bg-border" />
             <span className="size-1 rounded-full bg-border-strong" />
           </div>
-          <span className="text-2xs text-fg-muted">{stopsLabel(flight.stops)}</span>
+          <span className="text-2xs text-fg-muted">{stopsLabel(flight.stops, m.common)}</span>
         </div>
 
         <div className="text-right">
           <p className="tabular text-lg font-semibold leading-none">
-            {clockTime(flight.arrival_time)}
+            {clockTime(flight.arrival_time, locale)}
           </p>
           <p className="mt-1 font-mono text-xs text-fg-muted">{flight.destination}</p>
         </div>

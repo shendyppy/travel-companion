@@ -20,6 +20,8 @@ import { useState } from "react";
 import { Check, ChevronDown, Loader2, MinusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { shortDate } from "@/lib/format";
+import { useMessages } from "@/components/i18n/MessagesProvider";
+import { fill, type Locale, type Messages } from "@/lib/i18n";
 import type { ToolActivity as Activity } from "@/lib/types";
 
 function arg(args: Record<string, unknown>, key: string): string | undefined {
@@ -34,29 +36,33 @@ function arg(args: Record<string, unknown>, key: string): string | undefined {
  * rather than "search_flights(origin=CGK, destination=DPS)". A user who wanted
  * the function signature can open the disclosure.
  */
-function describe(activity: Activity): string {
+function describe(activity: Activity, m: Messages, locale: Locale): string {
   const { tool, arguments: args } = activity;
   const route = [arg(args, "origin"), arg(args, "destination")].filter(Boolean).join(" → ");
 
   switch (tool) {
     case "search_flights": {
       const date = arg(args, "departure_date");
-      return `Mencari penerbangan ${route}${date ? `, ${shortDate(date)}` : ""}`;
+      return date
+        ? fill(m.tool.searchFlightsOn, { route, date: shortDate(date, locale) })
+        : fill(m.tool.searchFlights, { route });
     }
     case "search_flights_flexible":
-      return `Mencari tanggal termurah ${route}`;
+      return fill(m.tool.searchFlexible, { route });
     case "recommend_destinations":
-      return "Menyusun rekomendasi destinasi";
+      return m.tool.recommend;
     case "get_destination_info":
-      return `Membaca data ${arg(args, "city") ?? "destinasi"}`;
+      return fill(m.tool.destinationInfo, {
+        city: arg(args, "city") ?? m.tool.destinationFallback,
+      });
     case "lookup_place":
-      return `Mencari kode bandara ${arg(args, "query") ?? ""}`.trim();
+      return fill(m.tool.lookupPlace, { query: arg(args, "query") ?? "" }).trim();
     case "resolve_dates":
-      return "Menentukan tanggalnya";
+      return m.tool.resolveDates;
     case "search_knowledge":
-      return "Membaca panduan perjalanan";
+      return m.tool.searchKnowledge;
     default:
-      return `Menjalankan ${tool}`;
+      return fill(m.tool.running, { tool });
   }
 }
 
@@ -67,30 +73,33 @@ function describe(activity: Activity): string {
  * something "Selesai" does not, and it is the difference between a status line
  * that reassures and one that is merely present.
  */
-function summarise(activity: Activity): string {
+function summarise(activity: Activity, m: Messages): string {
   const result = activity.result;
   if (!result) return "";
-  if (!result.ok) return result.error ? "tidak ketemu" : "gagal";
+  if (!result.ok) return result.error ? m.tool.notFound : m.tool.failed;
 
   const data = result.data as Record<string, unknown> | undefined;
-  if (!data) return "selesai";
+  if (!data) return m.tool.done;
 
   const flights = data.flights as unknown[] | undefined;
   if (Array.isArray(flights)) {
-    return flights.length ? `${flights.length} penerbangan` : "tidak ada penerbangan";
+    return flights.length ? fill(m.tool.nFlights, { n: flights.length }) : m.tool.noFlights;
   }
   const destinations = data.destinations as unknown[] | undefined;
   if (Array.isArray(destinations)) {
-    return destinations.length ? `${destinations.length} destinasi` : "tidak ada yang cocok";
+    return destinations.length
+      ? fill(m.tool.nDestinations, { n: destinations.length })
+      : m.tool.noMatches;
   }
   const passages = data.passages as unknown[] | undefined;
-  if (Array.isArray(passages)) return `${passages.length} kutipan`;
+  if (Array.isArray(passages)) return fill(m.tool.nPassages, { n: passages.length });
 
-  return "selesai";
+  return m.tool.done;
 }
 
 export function ToolActivity({ activity }: { activity: Activity }) {
   const [open, setOpen] = useState(false);
+  const { m, locale } = useMessages();
   const running = !activity.result;
   const failed = Boolean(activity.result && !activity.result.ok);
 
@@ -118,11 +127,11 @@ export function ToolActivity({ activity }: { activity: Activity }) {
         </span>
 
         <span className={cn("min-w-0 flex-1 truncate", running ? "text-fg-muted" : "text-fg")}>
-          {describe(activity)}
+          {describe(activity, m, locale)}
         </span>
 
         {!running && (
-          <span className="shrink-0 text-xs text-fg-muted">{summarise(activity)}</span>
+          <span className="shrink-0 text-xs text-fg-muted">{summarise(activity, m)}</span>
         )}
 
         <ChevronDown

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 
 const MAX_HEIGHT = 160;
 
@@ -17,7 +18,7 @@ export function ChatInput({
   onSend,
   onStop,
   busy,
-  placeholder = "Tanya apa aja soal perjalanan kamu…",
+  placeholder,
   autoFocus,
   className,
 }: {
@@ -30,6 +31,7 @@ export function ChatInput({
 }) {
   const [value, setValue] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+  const { m } = useMessages();
 
   useEffect(() => {
     const el = ref.current;
@@ -67,7 +69,7 @@ export function ChatInput({
         autoFocus={autoFocus}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder={placeholder}
+        placeholder={placeholder ?? m.tool.inputPlaceholder}
         aria-label="Pesan untuk agent"
         className="flex-1 resize-none bg-transparent py-2 text-base outline-none placeholder:text-fg-subtle"
       />

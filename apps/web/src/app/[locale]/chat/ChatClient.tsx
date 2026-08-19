@@ -23,18 +23,15 @@ import { ChatBubble } from "@/components/chat/ChatBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TripPanel, deriveTrip } from "@/components/chat/TripPanel";
 import { Chip } from "@/components/ui/chip";
-
-const OPENERS = [
-  "Liburan 4 hari dari Jakarta, budget 3 juta, ke mana ya?",
-  "Cariin tiket Jakarta ke Bali minggu depan",
-  "Yogyakarta bulan Oktober gimana cuacanya?",
-];
+import { useMessages } from "@/components/i18n/MessagesProvider";
 
 export function ChatClient() {
   const agent = useAgentStream();
   const [sheetOpen, setSheetOpen] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
+  const { m, t, locale } = useMessages();
+  const openers = [m.chat.opener1, m.chat.opener2, m.chat.opener3];
 
   // Pick up the hero's conversation. Runs once — a later visit starts fresh
   // rather than resurrecting something the user thought they had left.
@@ -60,7 +57,7 @@ export function ChatClient() {
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <Link href={`/${locale}`} className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="grid size-7 place-items-center rounded-md bg-accent" aria-hidden>
             <Compass className="size-4 text-accent-fg" />
           </span>
@@ -75,7 +72,7 @@ export function ChatClient() {
                 : "text-fg-subtle",
             )}
           >
-            {agent.quotaRemaining} pesan gratis
+            {t(m.chat.freeMessages, { n: agent.quotaRemaining })}
           </span>
         )}
       </header>
@@ -86,12 +83,10 @@ export function ChatClient() {
             <div className="mx-auto grid max-w-2xl gap-thread px-4 py-6">
               {agent.messages.length === 0 ? (
                 <div className="pt-8">
-                  <h1 className="text-2xl font-semibold tracking-tight">Mau ke mana?</h1>
-                  <p className="mt-2 text-fg-muted">
-                    Ceritain aja rencananya — bahasa Indonesia, English, campur juga boleh.
-                  </p>
+                  <h1 className="text-2xl font-semibold tracking-tight">{m.chat.title}</h1>
+                  <p className="mt-2 text-fg-muted">{m.chat.lead}</p>
                   <div className="mt-5 flex flex-wrap gap-2">
-                    {OPENERS.map((opener) => (
+                    {openers.map((opener) => (
                       <Chip key={opener} onClick={() => void agent.send(opener)}>
                         {opener}
                       </Chip>
@@ -144,7 +139,7 @@ export function ChatClient() {
         {sheetOpen && (
           <button
             type="button"
-            aria-label="Tutup panel"
+            aria-label={m.chat.closePanel}
             onClick={() => setSheetOpen(false)}
             className="animate-fade fixed inset-0 z-40 bg-ink-950/40"
           />
@@ -162,7 +157,7 @@ export function ChatClient() {
             aria-expanded={sheetOpen}
             className="flex w-full items-center gap-3 px-4 py-3 text-left"
           >
-            <span className="text-sm font-medium">Trip kamu</span>
+            <span className="text-sm font-medium">{m.trip.title}</span>
             <span className="tabular text-xs text-fg-muted">{filled}/4</span>
             <span className="ml-auto flex gap-1" aria-hidden>
               {[0, 1, 2, 3].map((i) => (

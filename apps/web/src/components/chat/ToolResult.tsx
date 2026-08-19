@@ -15,6 +15,7 @@
 
 import { FlightCard } from "./FlightCard";
 import { DestinationCard } from "./DestinationCard";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { Destination, FlightInfo, ToolActivity } from "@/lib/types";
 
 const MAX_FLIGHTS = 4;
@@ -27,6 +28,7 @@ export function ToolResult({
   activity: ToolActivity;
   onAsk?: (message: string) => void;
 }) {
+  const { m, t } = useMessages();
   const result = activity.result;
   if (!result?.ok) return null;
 
@@ -49,7 +51,7 @@ export function ToolResult({
         ))}
         {flights.length > MAX_FLIGHTS && (
           <p className="text-xs text-fg-muted">
-            +{flights.length - MAX_FLIGHTS} penerbangan lain — tanya aja kalau mau lihat semua.
+            {t(m.tool.moreFlights, { n: flights.length - MAX_FLIGHTS })}
           </p>
         )}
       </div>
@@ -66,7 +68,7 @@ export function ToolResult({
           <DestinationCard
             key={destination.name}
             destination={destination}
-            onAsk={onAsk ? (city) => onAsk(`Ceritain lebih detail soal ${city} dong`) : undefined}
+            onAsk={onAsk ? (city) => onAsk(t(m.tool.tellMeMore, { city })) : undefined}
           />
         ))}
       </div>

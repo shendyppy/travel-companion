@@ -1,4 +1,7 @@
+"use client";
+
 import { rupiah } from "@/lib/format";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { Destination } from "@/lib/types";
 
 /**
@@ -16,6 +19,7 @@ export function DestinationCard({
   destination: Destination;
   onAsk?: (city: string) => void;
 }) {
+  const { m, t } = useMessages();
   const daily = destination.estimated_daily_total_idr;
 
   return (
@@ -54,7 +58,7 @@ export function DestinationCard({
           onClick={() => onAsk(destination.name)}
           className="mt-3 text-sm font-medium text-accent hover:underline"
         >
-          Tanya soal {destination.name} →
+          {t(m.tool.askAbout, { city: destination.name })}
         </button>
       )}
     </div>
