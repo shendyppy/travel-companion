@@ -27,6 +27,7 @@ export function Section({
   illustration,
   children,
   className,
+  full,
 }: {
   id?: string;
   /** Marks this section as a stop on the onboarding tour. */
@@ -40,6 +41,21 @@ export function Section({
   illustration?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Give the section a full viewport to itself, with its content vertically
+   * centred in whatever is left over.
+   *
+   * The sections used to run straight into each other, so the page read as one
+   * long scroll of loosely related blocks rather than as a sequence of answers.
+   * `min-h` rather than `h`: a section with more content than fits must grow, and
+   * clipping a rail because it did not agree with a round number is worse than an
+   * uneven page.
+   *
+   * `dvh`, not `vh` — on mobile Safari `100vh` is taller than the visible area
+   * while the address bar is showing, which puts the bottom of every section
+   * under the browser chrome.
+   */
+  full?: boolean;
 }) {
   const { ref, props } = useInView<HTMLElement>();
 
@@ -49,9 +65,15 @@ export function Section({
       id={id}
       data-tour={tourId}
       {...props}
-      className={cn("reveal border-t border-border py-16 sm:py-24", className)}
+      className={cn(
+        "reveal border-t border-border",
+        full
+          ? "flex min-h-[100dvh] flex-col justify-center py-16 sm:py-20"
+          : "py-16 sm:py-24",
+        className,
+      )}
     >
-      <div className="mx-auto max-w-6xl px-5">
+      <div className="mx-auto w-full max-w-6xl px-5">
         <header className="mb-8 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 sm:mb-10">
           <div className="min-w-0 max-w-2xl">
             {eyebrow && (

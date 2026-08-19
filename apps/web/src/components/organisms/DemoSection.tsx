@@ -77,8 +77,13 @@ export function DemoSection() {
     >
       {/* The track. Its only job is to be tall — that height is the scrub
           distance. Everything visible lives in the sticky child. */}
-      <div ref={ref} style={{ height: `${STEPS.length * VH_PER_STEP}vh` }}>
-        <div className="sticky top-20 grid gap-6 lg:grid-cols-[1fr_1.15fr] lg:items-start lg:gap-10">
+      <div ref={ref} style={{ height: `${STEPS.length * VH_PER_STEP}dvh` }}>
+        {/* The sticky child fills the viewport and centres its content. Left at
+            its natural height it pinned near the top and left most of a screen
+            empty underneath for the whole length of the track — the panel was
+            fine, the hole below it was the problem. */}
+        <div className="sticky top-14 flex min-h-[calc(100dvh-3.5rem)] items-center">
+          <div className="grid w-full gap-6 lg:grid-cols-[1fr_1.15fr] lg:items-center lg:gap-10">
           <ol className="grid gap-2">
             {STEPS.map((item, i) => {
               const active = i === step;
@@ -137,7 +142,8 @@ export function DemoSection() {
           </ol>
 
           <div className="overflow-hidden rounded-panel border border-border bg-surface-2 p-4 shadow-card sm:p-6">
-            <Stage step={step} label={STEPS[step].title} />
+              <Stage step={step} label={STEPS[step].title} />
+            </div>
           </div>
         </div>
       </div>

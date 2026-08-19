@@ -27,7 +27,8 @@ import { isoDateIn, rupiah, shortDate, staleness } from "@/lib/format";
 import { Price } from "@/components/molecules/Price";
 import { Section } from "@/components/molecules/Section";
 import { OriginPicker } from "@/components/molecules/OriginPicker";
-import { TravelTypeMark } from "@/components/molecules/TravelTypeMark";
+import { TravelTypeMark, categoryStyle } from "@/components/molecules/TravelTypeMark";
+import { Landmark } from "@/components/illustration/Landmarks";
 import { FareScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { CatalogueResponse, DealsResponse, Destination, ToolSeed } from "@/lib/types";
@@ -35,6 +36,18 @@ import type { Submission } from "@/components/organisms/FlightSearchForm";
 
 /** How many cards the cold rail shows before it stops being a rail and starts being a list. */
 const COLD_LIMIT = 8;
+
+/**
+ * A destination's primary travel type, looked up by city name.
+ *
+ * The deals payload carries fares, not taxonomy, so the hue has to come from the
+ * catalogue. Returning undefined when they disagree is deliberate — the card
+ * falls back to the neutral tint rather than guessing a colour that would be
+ * wrong in a way nobody could see.
+ */
+function typeOf(city: string, catalogue?: CatalogueResponse | null): string | undefined {
+  return catalogue?.destinations.find((place) => place.name === city)?.travel_types[0];
+}
 
 export function DealRail({
   deals,
@@ -102,6 +115,7 @@ export function DealRail({
       }
       aside={<OriginPicker value={deals.origin} />}
       illustration={<FareScene className="size-24" />}
+      full
     >
       {deals.requested_origin && deals.requested_origin !== deals.origin && (
         <p className="mb-4 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg-muted">
@@ -119,11 +133,30 @@ export function DealRail({
               type="button"
               onClick={() => search(deal.city, deal.iata, deals.departure_date ?? isoDateIn(30))}
               className={cn(
-                "group lift pressable w-52 shrink-0 snap-start rounded-card border border-border bg-surface p-4 text-left",
-                "transition-[border-color,box-shadow,transform] duration-[--duration-fast]",
-                "hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card",
+                "group lift pressable w-56 shrink-0 snap-start overflow-hidden rounded-card border border-border bg-surface text-left",
               )}
             >
+              {/* The landmark sits in a tinted band above the card body, drawn
+                  in the destination's own travel-type hue. It is the fastest way
+                  to tell twelve near-identical fare cards apart — a price alone
+                  never distinguished Lombok from Penang. */}
+              <span
+                className={cn(
+                  "flex h-20 items-end justify-center",
+                  categoryStyle(typeOf(deal.city, catalogue)).tint,
+                )}
+                aria-hidden
+              >
+                <Landmark
+                  name={deal.city}
+                  className={cn(
+                    "h-16 w-24 transition-transform duration-[--duration-normal] group-hover:-translate-y-1",
+                    categoryStyle(typeOf(deal.city, catalogue)).mark,
+                  )}
+                />
+              </span>
+
+              <span className="block p-4">
               <p className="font-medium">{deal.city}</p>
               <p className="text-xs text-fg-muted">{deal.country}</p>
 
@@ -147,6 +180,7 @@ export function DealRail({
                   className="size-3 transition-transform group-hover:translate-x-0.5"
                   aria-hidden
                 />
+              </span>
               </span>
             </button>
           ))
@@ -234,8 +268,22 @@ function ColdRail({
             key={place.iata ?? place.name}
             type="button"
             onClick={() => onPick(place.name, place.iata ?? "", date)}
-            className="lift pressable flex h-auto w-56 shrink-0 snap-start flex-col items-start gap-2 rounded-card border border-border bg-surface p-4 text-left"
+            className="group lift pressable flex h-auto w-56 shrink-0 snap-start flex-col items-start overflow-hidden rounded-card border border-border bg-surface text-left"
           >
+            <span
+              className={cn("flex h-20 w-full items-end justify-center", categoryStyle(type).tint)}
+              aria-hidden
+            >
+              <Landmark
+                name={place.name}
+                className={cn(
+                  "h-16 w-24 transition-transform duration-[--duration-normal] group-hover:-translate-y-1",
+                  categoryStyle(type).mark,
+                )}
+              />
+            </span>
+
+            <span className="flex w-full flex-col items-start gap-2 p-4">
             {type && <TravelTypeMark value={type} label={typeLabels[type] ?? type} />}
 
             <div className="min-w-0 self-stretch">
@@ -253,7 +301,11 @@ function ColdRail({
 
             <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-accent">
               {m.deals.checkPriceNow}
-              <ArrowRight className="size-3" aria-hidden />
+              <ArrowRight
+                className="size-3 transition-transform group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </span>
             </span>
           </button>
         );
