@@ -40,6 +40,47 @@
   --color-brand-900: oklch(30% 0.060 236);
   --color-brand-950: oklch(23% 0.042 236);
 
+  /* ---- Warm: terracotta. The second voice. ----
+     One complementary hue, not a free-for-all. Blue alone reads as competent and
+     cold; blue plus a single warm counterpart reads as a decision. Hue 32 is
+     deliberately clear of --color-warning (65-75) so an accent is never mistaken
+     for an alarm. */
+  --color-warm-50:  oklch(97% 0.018 32);
+  --color-warm-100: oklch(94% 0.038 32);
+  --color-warm-200: oklch(88% 0.068 32);
+  --color-warm-300: oklch(80% 0.100 32);
+  --color-warm-400: oklch(71% 0.130 32);
+  --color-warm-500: oklch(64% 0.150 32);
+  --color-warm-600: oklch(57% 0.150 32);
+  --color-warm-700: oklch(49% 0.130 32);
+  --color-warm-800: oklch(41% 0.105 32);
+  --color-warm-900: oklch(33% 0.078 32);
+
+  /* ---- Category hues: the eight TravelType tiles. ----
+     Every one sits at the SAME lightness and chroma; only hue changes. That is
+     what makes eight colours read as one family rather than as a pile of
+     stickers, and it means no tile looks more important than another — which
+     would be a lie, since none of them is.
+     Order matches the enum: beach, mountain, cultural, city, adventure, nature,
+     foodie, shopping. */
+  --color-cat-beach:     oklch(52% 0.130 210);
+  --color-cat-mountain:  oklch(52% 0.130 160);
+  --color-cat-cultural:  oklch(52% 0.130 300);
+  --color-cat-city:      oklch(52% 0.130 265);
+  --color-cat-adventure: oklch(52% 0.130 25);
+  --color-cat-nature:    oklch(52% 0.130 130);
+  --color-cat-foodie:    oklch(52% 0.130 60);
+  --color-cat-shopping:  oklch(52% 0.130 335);
+
+  --color-cat-beach-soft:     oklch(96% 0.030 210);
+  --color-cat-mountain-soft:  oklch(96% 0.030 160);
+  --color-cat-cultural-soft:  oklch(96% 0.030 300);
+  --color-cat-city-soft:      oklch(96% 0.030 265);
+  --color-cat-adventure-soft: oklch(96% 0.030 25);
+  --color-cat-nature-soft:    oklch(96% 0.030 130);
+  --color-cat-foodie-soft:    oklch(96% 0.030 60);
+  --color-cat-shopping-soft:  oklch(96% 0.030 335);
+
   /* ---- Neutrals: cool, low chroma. Restraint over personality. ---- */
   --color-ink-50:  oklch(99% 0.003 240);
   --color-ink-100: oklch(97.4% 0.005 240);
@@ -67,6 +108,13 @@
   --color-accent-fg: oklch(100% 0 0);
   --color-accent-soft: var(--color-brand-50);
   --color-ring: var(--color-brand-500);
+
+  /* The warm accent never competes with --color-accent for the primary action.
+     It marks sections, illustrations, and the one thing on a screen worth
+     looking at second. */
+  --color-warm: var(--color-warm-600);
+  --color-warm-fg: oklch(100% 0 0);
+  --color-warm-tint: var(--color-warm-50);
 
   /* ---- Status. Failure is a normal state here, not an alarm. ---- */
   --color-success: oklch(56% 0.130 150);
@@ -135,6 +183,31 @@
   --color-accent-soft: oklch(28% 0.045 236);
   --color-ring: var(--color-brand-400);
 
+  --color-warm: var(--color-warm-400);
+  --color-warm-fg: oklch(19% 0.03 32);
+  --color-warm-tint: oklch(28% 0.050 32);
+
+  /* Category marks lift and their tints drop, same as every other pair here.
+     Holding the light values would leave the marks unreadable on a dark card and
+     the tints glowing brighter than the surface they sit on. */
+  --color-cat-beach:     oklch(76% 0.130 210);
+  --color-cat-mountain:  oklch(76% 0.130 160);
+  --color-cat-cultural:  oklch(76% 0.130 300);
+  --color-cat-city:      oklch(76% 0.130 265);
+  --color-cat-adventure: oklch(76% 0.130 25);
+  --color-cat-nature:    oklch(76% 0.130 130);
+  --color-cat-foodie:    oklch(76% 0.130 60);
+  --color-cat-shopping:  oklch(76% 0.130 335);
+
+  --color-cat-beach-soft:     oklch(29% 0.050 210);
+  --color-cat-mountain-soft:  oklch(29% 0.050 160);
+  --color-cat-cultural-soft:  oklch(29% 0.050 300);
+  --color-cat-city-soft:      oklch(29% 0.050 265);
+  --color-cat-adventure-soft: oklch(29% 0.050 25);
+  --color-cat-nature-soft:    oklch(29% 0.050 130);
+  --color-cat-foodie-soft:    oklch(29% 0.050 60);
+  --color-cat-shopping-soft:  oklch(29% 0.050 335);
+
   --color-success: oklch(72% 0.150 150);
   --color-success-soft: oklch(30% 0.055 150);
   --color-warning: oklch(80% 0.130 75);
@@ -158,10 +231,50 @@
 @keyframes tc-sweep { 0% { transform: translateX(-100%) } 100% { transform: translateX(300%) } }
 @keyframes tc-caret { 0%, 45% { opacity: 1 } 55%, 100% { opacity: 0 } }
 
+@keyframes tc-drift { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+
 @utility animate-rise { animation: tc-rise var(--duration-normal) var(--ease-out) both }
 @utility animate-fade { animation: tc-fade-in var(--duration-fast) var(--ease-out) both }
 @utility animate-breathe { animation: tc-breathe 1.6s var(--ease-in-out) infinite }
 @utility animate-caret { animation: tc-caret 1s steps(1, end) infinite }
+
+/* Slow vertical drift for illustrations. Six pixels over seven seconds is below
+   the threshold where motion pulls the eye — it registers as "this page is
+   awake" rather than as something asking to be watched. */
+@utility animate-drift { animation: tc-drift 7s var(--ease-in-out) infinite }
+
+/* Sections entering as they are scrolled to. `useInView` flips data-inview and
+   the transition does the rest, so there is no animation to interrupt if the
+   element is already on screen at load. */
+@utility reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+
+  &[data-inview="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Starting at opacity 0 means a section is invisible until something flips the
+     attribute. Anyone who has asked for less motion should never be at the mercy
+     of that, so for them the section simply starts visible and nothing animates. */
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Hero atmosphere. Two soft washes — brand and warm — behind the type. Pure
+   CSS: no image request, no layout cost, and it recolours itself in dark mode
+   because both stops are tokens. */
+@utility bg-mesh {
+  background-image:
+    radial-gradient(60% 55% at 12% 0%, var(--color-accent-soft) 0%, transparent 62%),
+    radial-gradient(48% 48% at 92% 8%, var(--color-warm-tint) 0%, transparent 60%);
+}
 
 /* Money gets one treatment everywhere: tabular figures so columns of rupiah
    line up, and no wrapping mid-number. */

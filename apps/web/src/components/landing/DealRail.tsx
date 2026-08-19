@@ -24,6 +24,10 @@
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isoDateIn, rupiah, shortDate, staleness } from "@/lib/format";
+import { Section } from "./Section";
+import { OriginPicker } from "./OriginPicker";
+import { FareScene } from "@/components/illustration/Scenes";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { DealsResponse, ToolSeed } from "@/lib/types";
 import type { Submission } from "./FlightSearchForm";
 
@@ -36,8 +40,9 @@ export function DealRail({
   originLabel: string;
   onRun: (submission: Submission) => void;
 }) {
+  const { m, t, locale } = useMessages();
   const cold = !deals.updated_at || deals.deals.length === 0;
-  const age = staleness(deals.updated_at);
+  const age = staleness(deals.updated_at, locale);
 
   const search = (city: string, iata: string, date: string) => {
     const seed: ToolSeed = {
@@ -50,84 +55,82 @@ export function DealRail({
       },
     };
     onRun({
-      message: `Cari penerbangan ${originLabel} ke ${city} tanggal ${shortDate(date)}`,
+      message: t(m.deals.message, {
+        origin: originLabel,
+        destination: city,
+        date: shortDate(date, locale),
+      }),
       seed,
     });
   };
 
   return (
-    <section className="border-t border-border py-12">
-      <div className="mx-auto max-w-6xl px-5">
-        <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">
-              Berangkat dari {originLabel}
-            </h2>
-            <p className="mt-1 text-sm text-fg-muted">
-              {cold
-                ? "Harga belum tersimpan untuk kota ini — klik buat cari langsung."
-                : `Harga mulai untuk ${deals.departure_date ? shortDate(deals.departure_date) : "sebulan ke depan"}.`}
-            </p>
-          </div>
-          {age && (
-            <p className="text-xs text-fg-subtle">
-              Diperbarui {age}
-            </p>
-          )}
-        </header>
+    <Section
+      eyebrow={m.deals.eyebrow}
+      title={t(m.deals.title, { origin: originLabel })}
+      lead={
+        cold
+          ? m.deals.leadCold
+          : t(m.deals.leadWarm, {
+              date: deals.departure_date
+                ? shortDate(deals.departure_date, locale)
+                : m.deals.nextMonth,
+              age: age ? t(m.deals.leadAge, { age }) : "",
+            })
+      }
+      aside={<OriginPicker value={deals.origin} />}
+      illustration={<FareScene className="size-24" />}
+    >
+      {deals.requested_origin && deals.requested_origin !== deals.origin && (
+        <p className="mb-4 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg-muted">
+          {t(m.deals.clamped, { requested: deals.requested_origin, served: originLabel })}
+        </p>
+      )}
 
-        {deals.requested_origin && deals.requested_origin !== deals.origin && (
-          <p className="mb-4 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg-muted">
-            Kami belum nyimpen harga dari {deals.requested_origin}, jadi yang tampil dari{" "}
-            {originLabel}.
-          </p>
+      <div className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1">
+        {cold ? (
+          <ColdRail onPick={search} />
+        ) : (
+          deals.deals.map((deal) => (
+            <button
+              key={deal.iata}
+              type="button"
+              onClick={() => search(deal.city, deal.iata, deals.departure_date ?? isoDateIn(30))}
+              className={cn(
+                "group w-52 shrink-0 snap-start rounded-card border border-border bg-surface p-4 text-left",
+                "transition-[border-color,box-shadow,transform] duration-[--duration-fast]",
+                "hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card",
+              )}
+            >
+              <p className="font-medium">{deal.city}</p>
+              <p className="text-xs text-fg-muted">{deal.country}</p>
+
+              <p className="tabular mt-4 font-mono text-lg font-semibold text-price">
+                {rupiah(deal.price_idr)}
+              </p>
+              <p className="text-2xs text-fg-muted">
+                {deal.airline ?? m.deals.oneWay} ·{" "}
+                {deal.stops === 0 ? m.deals.direct : t(m.deals.stops, { n: deal.stops })}
+              </p>
+
+              {deal.daily_cost_idr ? (
+                <p className="tabular mt-2 border-t border-border pt-2 text-2xs text-fg-muted">
+                  {t(m.deals.dailyThere, { amount: rupiah(deal.daily_cost_idr) })}
+                </p>
+              ) : null}
+
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent">
+                {m.deals.checkFlights}
+                <ArrowRight
+                  className="size-3 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </span>
+            </button>
+          ))
         )}
-
-        <div className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1">
-          {cold ? (
-            <ColdRail onPick={search} />
-          ) : (
-            deals.deals.map((deal) => (
-              <button
-                key={deal.iata}
-                type="button"
-                onClick={() =>
-                  search(deal.city, deal.iata, deals.departure_date ?? isoDateIn(30))
-                }
-                className={cn(
-                  "group w-52 shrink-0 snap-start rounded-card border border-border bg-surface p-4 text-left",
-                  "transition-[border-color,box-shadow] hover:border-border-strong hover:shadow-card",
-                )}
-              >
-                <p className="font-medium">{deal.city}</p>
-                <p className="text-xs text-fg-muted">{deal.country}</p>
-
-                <p className="tabular mt-4 font-mono text-lg font-semibold text-price">
-                  {rupiah(deal.price_idr)}
-                </p>
-                <p className="text-2xs text-fg-muted">
-                  {deal.airline ?? "sekali jalan"} · {deal.stops === 0 ? "langsung" : `${deal.stops} transit`}
-                </p>
-
-                {deal.daily_cost_idr ? (
-                  <p className="tabular mt-2 border-t border-border pt-2 text-2xs text-fg-muted">
-                    Di sana ~{rupiah(deal.daily_cost_idr)}/hari
-                  </p>
-                ) : null}
-
-                <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent">
-                  Cek penerbangan
-                  <ArrowRight
-                    className="size-3 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </span>
-              </button>
-            ))
-          )}
-        </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -149,6 +152,7 @@ const FALLBACK = [
 
 function ColdRail({ onPick }: { onPick: (city: string, iata: string, date: string) => void }) {
   const date = isoDateIn(30);
+  const { m } = useMessages();
   return (
     <>
       {FALLBACK.map((place) => (
@@ -160,9 +164,9 @@ function ColdRail({ onPick }: { onPick: (city: string, iata: string, date: strin
         >
           <p className="font-medium">{place.city}</p>
           <p className="font-mono text-xs text-fg-muted">{place.iata}</p>
-          <p className="mt-4 text-sm text-fg-subtle">Harga belum tersimpan</p>
+          <p className="mt-4 text-sm text-fg-subtle">{m.deals.noPriceYet}</p>
           <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent">
-            Cek harga sekarang
+            {m.deals.checkPriceNow}
             <ArrowRight className="size-3" aria-hidden />
           </span>
         </button>

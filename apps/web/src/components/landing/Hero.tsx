@@ -24,6 +24,8 @@ import { ArrowRight, RotateCcw } from "lucide-react";
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { Chip } from "@/components/ui/chip";
+import { RouteScene } from "@/components/illustration/Scenes";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import { SearchCommandBar } from "./SearchCommandBar";
 import type { Submission } from "./FlightSearchForm";
 import type { Facets } from "@/lib/types";
@@ -50,18 +52,23 @@ export function Hero({
 }) {
   const started = agent.hasStarted;
   const headingRef = useRef<HTMLDivElement>(null);
+  const { m, t } = useMessages();
 
   return (
-    <section className="mx-auto w-full max-w-3xl px-5 pb-12 pt-12 sm:pt-20">
+    // The mesh is two soft washes of brand and warm behind the type — pure CSS,
+    // no image request. It is the one place on the page allowed to be purely
+    // atmospheric, because a hero that is only a form on a flat background reads
+    // as an admin panel.
+    <section className="bg-mesh relative mx-auto w-full max-w-3xl px-5 pb-12 pt-12 sm:pt-20">
       <div ref={headingRef} className={started ? "mb-6" : "mb-8 sm:mb-10"}>
+        {!started && (
+          <RouteScene className="animate-fade mb-6 hidden h-24 w-full max-w-sm text-fg-muted sm:block" />
+        )}
         <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-          Rencanain perjalanan, bukan cuma cari tiket.
+          {m.hero.titleLead} <span className="text-accent">{m.hero.titleAccent}</span>
         </h1>
         {!started && (
-          <p className="animate-fade mt-3 text-pretty text-lg text-fg-muted">
-            Ceritain budget dan vibe-nya. Dia cariin destinasi, ngecek harga penerbangan
-            beneran, terus nyusun itinerary-nya.
-          </p>
+          <p className="animate-fade mt-3 text-pretty text-lg text-fg-muted">{m.hero.lead}</p>
         )}
       </div>
 
@@ -104,7 +111,7 @@ export function Hero({
                 onClick={onHandOff}
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-medium text-accent-fg"
               >
-                Lanjutkan di companion
+                {m.hero.continueInCompanion}
                 <ArrowRight className="size-4" aria-hidden />
               </button>
               <button
@@ -113,11 +120,11 @@ export function Hero({
                 className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm text-fg-muted hover:text-fg"
               >
                 <RotateCcw className="size-3.5" aria-hidden />
-                Mulai lagi
+                {m.hero.startOver}
               </button>
               {agent.quotaRemaining !== null && (
                 <span className="tabular ml-auto text-xs text-fg-subtle">
-                  {agent.quotaRemaining} pesan gratis tersisa hari ini
+                  {t(m.hero.quotaLeft, { n: agent.quotaRemaining })}
                 </span>
               )}
             </div>
@@ -129,7 +136,7 @@ export function Hero({
         <ChatInput
           className="mt-3"
           onSend={(message) => run({ message } as Submission)}
-          placeholder="Tanya lanjutannya…"
+          placeholder={m.hero.followUp}
         />
       )}
     </section>

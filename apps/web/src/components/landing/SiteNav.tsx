@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Compass } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { GithubMark } from "@/components/ui/GithubMark";
+import { useMessages } from "@/components/i18n/MessagesProvider";
+import { LOCALES, localePath, type Locale } from "@/lib/i18n";
 
 /**
  * Top navigation.
@@ -11,10 +17,13 @@ import { GithubMark } from "@/components/ui/GithubMark";
  * copy of one.
  */
 export function SiteNav() {
+  const { m, locale } = useMessages();
+  const base = `/${locale}`;
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur">
-      <nav className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-5">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+      <nav className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-5">
+        <Link href={base} className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="grid size-7 place-items-center rounded-md bg-accent" aria-hidden>
             <Compass className="size-4 text-accent-fg" />
           </span>
@@ -23,34 +32,82 @@ export function SiteNav() {
 
         <div className="ml-auto flex items-center gap-1 text-sm">
           <Link
-            href="/#penerbangan"
-            className="rounded-lg px-3 py-1.5 text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            href={`${base}#penerbangan`}
+            className="hidden rounded-lg px-3 py-1.5 text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg sm:block"
           >
-            Penerbangan
+            {m.nav.flights}
           </Link>
           <Link
-            href="/#inspirasi"
-            className="rounded-lg px-3 py-1.5 text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            href={`${base}#inspirasi`}
+            className="hidden rounded-lg px-3 py-1.5 text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg sm:block"
           >
-            Inspirasi
+            {m.nav.inspiration}
           </Link>
           <Link
-            href="/chat"
+            href={`${base}/chat`}
+            data-tour="companion"
             className="rounded-lg px-3 py-1.5 font-medium text-accent transition-colors hover:bg-accent-soft"
           >
-            Companion
+            {m.nav.companion}
           </Link>
+
+          <LocaleSwitch current={locale} />
+
           <a
             href="https://github.com/shendyppy"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub"
-            className="ml-1 grid size-9 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            aria-label={m.nav.github}
+            className="grid size-9 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
           >
             <GithubMark className="size-4" />
           </a>
         </div>
       </nav>
     </header>
+  );
+}
+
+/**
+ * Two links rather than a dropdown.
+ *
+ * With exactly two options a dropdown costs a click to reveal what a pair of
+ * two-letter labels can just show. They are real links, so the other language is
+ * crawlable and a middle-click opens it in a tab.
+ *
+ * The cookie is written on click so a later visit to a bare path lands on the
+ * language the reader actually chose, rather than on whatever their browser
+ * happens to advertise. The URL still wins over the cookie — see `middleware.ts`.
+ */
+function LocaleSwitch({ current }: { current: Locale }) {
+  const pathname = usePathname();
+  const { m } = useMessages();
+
+  return (
+    <div
+      className="ml-1 flex items-center rounded-lg border border-border p-0.5"
+      role="group"
+      aria-label={m.nav.language}
+    >
+      {LOCALES.map((locale) => (
+        <Link
+          key={locale}
+          href={localePath(pathname, locale)}
+          hrefLang={locale}
+          aria-current={locale === current ? "true" : undefined}
+          onClick={() => {
+            document.cookie = `tc:locale=${locale}; path=/; max-age=31536000; samesite=lax`;
+          }}
+          className={cn(
+            "rounded-md px-2 py-1 text-xs font-medium uppercase transition-colors",
+            locale === current
+              ? "bg-accent-soft text-accent"
+              : "text-fg-subtle hover:bg-surface-2 hover:text-fg",
+          )}
+        >
+          {locale}
+        </Link>
+      ))}
+    </div>
   );
 }

@@ -26,17 +26,18 @@ import { useState } from "react";
 import { MessageCircle, Plane, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import { FlightSearchForm, type Submission } from "./FlightSearchForm";
 import { ExploreFacets } from "./ExploreFacets";
 import type { Facets } from "@/lib/types";
 
 type Mode = "flights" | "explore" | "ask";
 
-const MODES: { id: Mode; label: string; icon: typeof Plane }[] = [
-  { id: "flights", label: "Cari penerbangan", icon: Plane },
-  { id: "explore", label: "Cari inspirasi", icon: Sparkles },
-  { id: "ask", label: "Tanya apa aja", icon: MessageCircle },
-];
+const MODE_ICONS: Record<Mode, typeof Plane> = {
+  flights: Plane,
+  explore: Sparkles,
+  ask: MessageCircle,
+};
 
 export function SearchCommandBar({
   facets,
@@ -58,6 +59,13 @@ export function SearchCommandBar({
   // visitor who sees a flight form immediately understands the product; a
   // visitor who sees a blank text box has to guess.
   const [mode, setMode] = useState<Mode>("flights");
+  const { m } = useMessages();
+
+  const modes: { id: Mode; label: string }[] = [
+    { id: "flights", label: m.commandBar.modeFlights },
+    { id: "explore", label: m.commandBar.modeExplore },
+    { id: "ask", label: m.commandBar.modeAsk },
+  ];
 
   if (collapsed) {
     return (
@@ -68,37 +76,44 @@ export function SearchCommandBar({
       >
         <Plane className="size-4 shrink-0 text-accent" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-sm text-fg-muted">{summary}</span>
-        <span className="shrink-0 text-xs font-medium text-accent">Ubah</span>
+        <span className="shrink-0 text-xs font-medium text-accent">{m.commandBar.change}</span>
       </button>
     );
   }
 
   return (
-    <div className="rounded-panel border border-border bg-surface shadow-raised">
+    <div
+      data-tour="command-bar"
+      className="rounded-panel border border-border bg-surface shadow-raised"
+    >
       <div
+        data-tour="modes"
         role="tablist"
-        aria-label="Cara mencari"
+        aria-label={m.commandBar.howToSearch}
         className="no-scrollbar flex gap-1 overflow-x-auto border-b border-border p-1.5"
       >
-        {MODES.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            role="tab"
-            type="button"
-            aria-selected={mode === id}
-            onClick={() => setMode(id)}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium",
-              "transition-[background-color,color] duration-[--duration-fast]",
-              mode === id
-                ? "bg-accent-soft text-accent"
-                : "text-fg-muted hover:bg-surface-2 hover:text-fg",
-            )}
-          >
-            <Icon className="size-4" aria-hidden />
-            {label}
-          </button>
-        ))}
+        {modes.map(({ id, label }) => {
+          const Icon = MODE_ICONS[id];
+          return (
+            <button
+              key={id}
+              role="tab"
+              type="button"
+              aria-selected={mode === id}
+              onClick={() => setMode(id)}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium",
+                "transition-[background-color,color] duration-[--duration-fast]",
+                mode === id
+                  ? "bg-accent-soft text-accent"
+                  : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+              )}
+            >
+              <Icon className="size-4" aria-hidden />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="p-4 sm:p-5">
@@ -116,11 +131,9 @@ export function SearchCommandBar({
             <ChatInput
               onSend={(message) => onSubmit({ message } as Submission)}
               busy={busy}
-              placeholder="Mau ke mana? Ceritain aja rencananya…"
+              placeholder={m.commandBar.askPlaceholder}
             />
-            <p className="text-xs text-fg-muted">
-              Tulis bebas — bahasa Indonesia, English, campur juga boleh.
-            </p>
+            <p className="text-xs text-fg-muted">{m.commandBar.askHint}</p>
           </div>
         )}
       </div>

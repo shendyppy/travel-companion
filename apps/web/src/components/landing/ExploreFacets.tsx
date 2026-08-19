@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { Facets, ToolSeed } from "@/lib/types";
 import type { Submission } from "./FlightSearchForm";
 
@@ -32,6 +33,7 @@ export function ExploreFacets({
   const [types, setTypes] = useState<string[]>([]);
   const [region, setRegion] = useState<string | null>(null);
   const [season, setSeason] = useState<string | null>(null);
+  const { m, t } = useMessages();
 
   const toggleType = (value: string) =>
     setTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
@@ -53,13 +55,15 @@ export function ExploreFacets({
     const bits: string[] = [];
     if (budget) {
       const band = facets.budget_bands.find((b) => b.value === budget);
-      if (band) bits.push(`budget ${band.range_label} per hari`);
+      if (band) bits.push(t(m.explore.bitBudget, { range: band.range_label }));
     }
     if (types.length) {
       const labels = types
-        .map((t) => facets.travel_types.find((f) => f.value === t)?.label.toLowerCase())
+        .map((value) => facets.travel_types.find((f) => f.value === value)?.label.toLowerCase())
         .filter(Boolean);
-      if (labels.length) bits.push(`suasana ${labels.join(" dan ")}`);
+      if (labels.length) {
+        bits.push(t(m.explore.bitVibe, { labels: labels.join(m.explore.and) }));
+      }
     }
     if (region) {
       bits.push(facets.regions.find((r) => r.value === region)?.label.toLowerCase() ?? region);
@@ -69,15 +73,15 @@ export function ExploreFacets({
     }
 
     const message = bits.length
-      ? `Kasih rekomendasi destinasi dong — ${bits.join(", ")}.`
-      : "Kasih rekomendasi destinasi dong, bebas aja.";
+      ? t(m.explore.messageWith, { bits: bits.join(", ") })
+      : m.explore.messageAny;
 
     onSubmit({ message, seed });
   };
 
   return (
     <div className="grid gap-4">
-      <Group label="Budget per hari">
+      <Group label={m.explore.budget}>
         {facets.budget_bands.map((band) => (
           <Chip
             key={band.value}
@@ -90,7 +94,7 @@ export function ExploreFacets({
         ))}
       </Group>
 
-      <Group label="Maunya kayak gimana">
+      <Group label={m.explore.vibe}>
         {facets.travel_types.map((type) => (
           <Chip
             key={type.value}
@@ -103,7 +107,7 @@ export function ExploreFacets({
       </Group>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Group label="Ke mana">
+        <Group label={m.explore.where}>
           {facets.regions.map((r) => (
             <Chip
               key={r.value}
@@ -115,7 +119,7 @@ export function ExploreFacets({
           ))}
         </Group>
 
-        <Group label="Musim">
+        <Group label={m.explore.season}>
           {facets.seasons.slice(0, 4).map((s) => (
             <Chip
               key={s.value}
@@ -135,7 +139,7 @@ export function ExploreFacets({
         className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-lg bg-accent px-6 text-sm font-medium text-accent-fg transition-opacity disabled:opacity-40"
       >
         <Sparkles className="size-4" aria-hidden />
-        Cariin destinasi
+        {m.explore.submit}
       </button>
     </div>
   );

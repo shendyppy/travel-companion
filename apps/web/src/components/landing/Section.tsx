@@ -1,0 +1,81 @@
+"use client";
+
+/**
+ * One band of the landing page.
+ *
+ * Exists so the page reads as a sequence rather than a stack. Every section
+ * below the hero answers the question the previous one leaves you with, and each
+ * gets the same furniture: an eyebrow that names the step, a heading that asks
+ * the question in the reader's own words, one line of context, and an
+ * illustration that stays out of the way.
+ *
+ * The reveal-on-scroll lives here rather than in each section, which means it is
+ * consistent by construction and there is exactly one place to remove it if it
+ * ever becomes annoying.
+ */
+
+import { cn } from "@/lib/utils";
+import { useInView } from "@/hooks/useInView";
+
+export function Section({
+  id,
+  tourId,
+  eyebrow,
+  title,
+  lead,
+  aside,
+  illustration,
+  children,
+  className,
+}: {
+  id?: string;
+  /** Marks this section as a stop on the onboarding tour. */
+  tourId?: string;
+  /** The step marker — "01", "02". Numbering makes the sequence legible at a glance. */
+  eyebrow?: string;
+  title: string;
+  lead?: React.ReactNode;
+  /** Controls that belong to the heading, like the origin picker. */
+  aside?: React.ReactNode;
+  illustration?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const { ref, props } = useInView<HTMLElement>();
+
+  return (
+    <section
+      ref={ref}
+      id={id}
+      data-tour={tourId}
+      {...props}
+      className={cn("reveal border-t border-border py-14", className)}
+    >
+      <div className="mx-auto max-w-6xl px-5">
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 max-w-2xl">
+            {eyebrow && (
+              <p className="tabular mb-1.5 font-mono text-2xs font-medium uppercase tracking-widest text-warm">
+                {eyebrow}
+              </p>
+            )}
+            <h2 className="text-balance text-2xl font-semibold tracking-tight">{title}</h2>
+            {lead && <p className="mt-2 text-pretty text-base text-fg-muted">{lead}</p>}
+          </div>
+
+          {aside && <div className="shrink-0">{aside}</div>}
+
+          {illustration && (
+            // Hidden below `lg` rather than shrunk. On a phone the space belongs
+            // to the content; a 40px decoration is worse than none.
+            <div className="hidden shrink-0 text-fg-muted lg:block" aria-hidden>
+              {illustration}
+            </div>
+          )}
+        </header>
+
+        {children}
+      </div>
+    </section>
+  );
+}

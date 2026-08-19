@@ -16,6 +16,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin } from "lucide-react";
+import { useMessages } from "@/components/i18n/MessagesProvider";
 
 export const ORIGINS = [
   { iata: "CGK", label: "Jakarta" },
@@ -32,19 +33,20 @@ export function originLabel(iata: string): string {
 export function OriginPicker({ value }: { value: string }) {
   const router = useRouter();
   const params = useSearchParams();
+  const { m, locale } = useMessages();
 
   const change = (iata: string) => {
     const next = new URLSearchParams(params.toString());
     next.set("origin", iata);
     // The rail is rendered on the server from a cached endpoint, so a navigation
     // is the refetch. `scroll: false` keeps the viewport where the user was.
-    router.push(`/?${next.toString()}`, { scroll: false });
+    router.push(`/${locale}?${next.toString()}`, { scroll: false });
   };
 
   return (
     <label className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm">
       <MapPin className="size-3.5 shrink-0 text-fg-subtle" aria-hidden />
-      <span className="sr-only">Kota keberangkatan</span>
+      <span className="sr-only">{m.deals.originLabel}</span>
       <select
         value={value}
         onChange={(event) => change(event.target.value)}
