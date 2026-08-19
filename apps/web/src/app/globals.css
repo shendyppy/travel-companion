@@ -7,6 +7,13 @@
 
 @import "tailwindcss";
 
+/* Enter/exit utilities (`animate-in`, `zoom-in-95`, `slide-in-from-top-2`) for the
+ * Radix-backed primitives in components/ui. Those components ship referencing
+ * these classes, and without this import the classes simply do not exist — no
+ * error, no warning, just dialogs and popovers appearing instantly. Separate from
+ * the motion tokens below, which cover everything this project animates itself. */
+@import "tw-animate-css";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
