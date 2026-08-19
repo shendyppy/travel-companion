@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GithubMark } from "@/components/ui/GithubMark";
+import { Wordmark } from "@/components/illustration/Mark";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import { useScrolled } from "@/hooks/useScrolled";
 import { LOCALES, localePath, type Locale } from "@/lib/i18n";
@@ -36,14 +36,8 @@ export function SiteNav() {
       )}
     >
       <nav className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-5">
-        <Link
-          href={base}
-          className="flex items-center gap-2 font-semibold tracking-[--tracking-heading]"
-        >
-          <span className="grid size-7 place-items-center rounded-md bg-accent" aria-hidden>
-            <Compass className="size-4 text-accent-fg" />
-          </span>
-          Travel Companion
+        <Link href={base} aria-label="Travel Companion">
+          <Wordmark className="flex items-center gap-2" animated />
         </Link>
 
         <div className="ml-auto flex items-center gap-1 text-sm">

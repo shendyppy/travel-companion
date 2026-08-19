@@ -19,6 +19,15 @@ interface SceneProps {
 }
 
 /**
+ * The hero arc, declared once.
+ *
+ * Used twice in `RouteScene` — as the stroke that is drawn and as the
+ * `offset-path` the plane flies. Two copies of these coordinates is two chances
+ * for the plane to end up flying beside the line instead of along it.
+ */
+const ROUTE = "M24 78C68 20 168 20 214 66";
+
+/**
  * Hero: a route between two points over a horizon.
  *
  * The arc is the whole idea of the product in one shape — two places and the
@@ -47,23 +56,40 @@ export function RouteScene({ className }: SceneProps) {
         />
       ))}
 
+      {/* The arc draws itself on load, left to right, so the first thing the
+          page does is trace the journey the product is about. pathLength={1}
+          lets the shared `draw` utility handle any curve without measuring. */}
       <path
-        d="M24 78C68 20 168 20 214 66"
+        d={ROUTE}
+        pathLength={1}
+        className="draw"
         stroke="var(--color-accent)"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeDasharray="5 6"
       />
-      <circle cx="24" cy="78" r="5" fill="var(--color-accent)" />
-      <circle cx="214" cy="66" r="5" fill="var(--color-warm)" />
 
-      <g className="animate-drift" style={{ transformOrigin: "120px 34px" }}>
-        <path
-          d="M112 40l22-8-6 10 10 5-13 3-4 8-3-8-9-2 3-8z"
-          fill="var(--color-warm)"
-          opacity="0.9"
-        />
-      </g>
+      {/* Origin lands first, destination a beat later — the same order the arc
+          is drawn in, so the three read as one gesture instead of three. */}
+      <circle cx="24" cy="78" r="5" fill="var(--color-accent)" className="pop" />
+      <circle
+        cx="214"
+        cy="66"
+        r="5"
+        fill="var(--color-warm)"
+        className="pop"
+        style={{ animationDelay: "1.2s", transformOrigin: "214px 66px" }}
+      />
+
+      {/* Then something flies it, on the exact curve the arc was drawn from —
+          `offset-path` takes the same `d`, so the plane can never drift off the
+          line when the art is edited. `offset-rotate: auto` banks it into the
+          turn, which is the detail that sells the whole thing. */}
+      <path
+        d="M-8 -5L9 0-8 5-4 0Z"
+        fill="var(--color-warm)"
+        className="travel"
+        style={{ offsetPath: `path("${ROUTE}")` }}
+      />
     </svg>
   );
 }

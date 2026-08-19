@@ -21,6 +21,7 @@
 
 import { useRef } from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ChatBubble } from "@/components/organisms/ChatBubble";
 import { ChatInput } from "@/components/organisms/ChatInput";
 import { Button } from "@/components/ui/button";
@@ -61,9 +62,17 @@ export function Hero({
     // atmospheric, because a hero that is only a form on a flat background reads
     // as an admin panel.
     <section className="bg-mesh relative mx-auto w-full max-w-3xl px-5 pb-12 pt-12 sm:pt-20">
-      <div ref={headingRef} className={started ? "mb-6" : "mb-8 sm:mb-10"}>
+      {/* Before a turn starts the block cascades in — illustration, headline,
+          lead, 60ms apart. Once the agent is running the stagger comes off:
+          re-animating the heading every time an answer arrives would be motion
+          for its own sake, and it would pull the eye away from the tokens
+          actually streaming in below. */}
+      <div
+        ref={headingRef}
+        className={cn(started ? "mb-6" : "mb-8 stagger sm:mb-10")}
+      >
         {!started && (
-          <RouteScene className="animate-fade mb-6 hidden h-24 w-full max-w-sm text-fg-muted sm:block" />
+          <RouteScene className="mb-6 hidden h-24 w-full max-w-sm text-fg-muted sm:block" />
         )}
         {/* The accent half of the headline carries the warm ramp, not the brand
             ramp. Brand blue is the colour of things you can click; using it here

@@ -254,6 +254,19 @@
 
 @keyframes tc-drift { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
 
+/* A stroke drawing itself. Paths carry pathLength="1" so one keyframe works for
+   any path at any size — no measuring, no per-shape dash values. */
+@keyframes tc-draw { from { stroke-dashoffset: 1 } to { stroke-dashoffset: 0 } }
+
+/* Something moving along a route. Paired with `offset-path` on the element, so
+   the motion follows the same curve the arc is drawn from rather than a
+   hand-tuned translate that drifts off the line whenever the art changes. */
+@keyframes tc-travel { from { offset-distance: 0% } to { offset-distance: 100% } }
+
+/* A node arriving: lands slightly hard, then settles. --ease-spring overshoots,
+   which is what makes it read as a thing with weight rather than a fade. */
+@keyframes tc-pop { from { transform: scale(0); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
 @utility animate-rise { animation: tc-rise var(--duration-normal) var(--ease-out) both }
 @utility animate-fade { animation: tc-fade-in var(--duration-fast) var(--ease-out) both }
 @utility animate-breathe { animation: tc-breathe 1.6s var(--ease-in-out) infinite }
@@ -340,6 +353,84 @@
      static. */
   @variant dark {
     opacity: 0.04;
+  }
+}
+
+/* A path that draws itself once, on load. */
+@utility draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tc-draw 1.4s var(--ease-out) forwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Something travelling the route. `offset-path` is set inline per shape,
+   because the curve belongs to the art rather than to this stylesheet. */
+@utility travel {
+  offset-rotate: auto;
+  animation: tc-travel 7s var(--ease-in-out) infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility pop {
+  animation: tc-pop var(--duration-normal) var(--ease-spring) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Cascade whatever is inside, in DOM order.
+ *
+ * A section whose children all arrive on the same frame reads as a page that
+ * finished loading. The same children 60ms apart read as a page assembling
+ * itself, which is the entire difference the eye is picking up on. Six is where
+ * it stops: past that the last item is late enough to feel broken.
+ */
+@utility stagger {
+  & > * {
+    animation: tc-rise var(--duration-normal) var(--ease-out) both;
+  }
+  & > *:nth-child(1) { animation-delay: 0ms }
+  & > *:nth-child(2) { animation-delay: 60ms }
+  & > *:nth-child(3) { animation-delay: 120ms }
+  & > *:nth-child(4) { animation-delay: 180ms }
+  & > *:nth-child(5) { animation-delay: 240ms }
+  & > *:nth-child(n + 6) { animation-delay: 300ms }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > * { animation: none }
+  }
+}
+
+/* Cards that respond to being pointed at.
+ *
+ * The lift is two pixels and the shadow carries the page's own hue rather than
+ * black, which is what keeps it from looking like a sticker peeling off the
+ * background. Transform and box-shadow only — both compositor properties, so a
+ * rail of twenty of these still scrolls at frame rate.
+ */
+@utility lift {
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-raised);
+    border-color: var(--color-border-strong);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover { transform: none }
   }
 }
 

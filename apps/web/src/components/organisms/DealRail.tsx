@@ -98,7 +98,7 @@ export function DealRail({
               type="button"
               onClick={() => search(deal.city, deal.iata, deals.departure_date ?? isoDateIn(30))}
               className={cn(
-                "group w-52 shrink-0 snap-start rounded-card border border-border bg-surface p-4 text-left",
+                "group lift pressable w-52 shrink-0 snap-start rounded-card border border-border bg-surface p-4 text-left",
                 "transition-[border-color,box-shadow,transform] duration-[--duration-fast]",
                 "hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card",
               )}
@@ -161,7 +161,7 @@ function ColdRail({ onPick }: { onPick: (city: string, iata: string, date: strin
           key={place.iata}
           type="button"
           onClick={() => onPick(place.city, place.iata, date)}
-          className="w-52 shrink-0 snap-start rounded-card border border-dashed border-border bg-surface p-4 text-left transition-colors hover:border-border-strong"
+          className="lift pressable w-52 shrink-0 snap-start rounded-card border border-dashed border-border bg-surface p-4 text-left"
         >
           <p className="font-medium">{place.city}</p>
           <p className="font-mono text-xs text-fg-muted">{place.iata}</p>

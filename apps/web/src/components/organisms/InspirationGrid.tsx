@@ -113,7 +113,7 @@ export function InspirationGrid({
               <button
                 type="button"
                 onClick={() => byType(type)}
-                className="group flex h-full w-full flex-col items-start gap-2.5 rounded-card border border-border bg-surface p-4 text-left transition-[border-color,box-shadow,transform] duration-[--duration-fast] hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card"
+                className="group lift pressable flex h-full w-full flex-col items-start gap-2.5 rounded-card border border-border bg-surface p-4 text-left"
               >
                 <span
                   className={cn(
@@ -143,7 +143,7 @@ export function InspirationGrid({
               <button
                 type="button"
                 onClick={() => byBudget(band)}
-                className="flex h-full w-full flex-col items-start gap-1 rounded-card border border-border bg-surface p-4 text-left transition-[border-color,box-shadow,transform] duration-[--duration-fast] hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card"
+                className="lift pressable flex h-full w-full flex-col items-start gap-1 rounded-card border border-border bg-surface p-4 text-left"
               >
                 <span className="text-sm font-medium">{band.label}</span>
                 <Price size="lg">{band.range_label}</Price>
