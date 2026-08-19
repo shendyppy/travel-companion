@@ -14,27 +14,44 @@
  * silently go stale — it uses the same tokens as the real UI, so a change to the
  * design system moves this too.
  *
- * Motion rules it obeys:
- *   - stops when scrolled out of view, so it is not burning battery in a
- *     background tab or below the fold
- *   - stops entirely under `prefers-reduced-motion`, which turns it into a
- *     plain, clickable set of steps
- *   - every step is a real button, so the animation is a convenience and never
- *     the only way to see a step
+ * **The reader drives it.** It used to advance itself every 3.8 seconds, and a
+ * timer is the wrong mechanism for a sequence someone is reading: it moved while
+ * you were still on step two, then moved again while you were looking for where
+ * step two went. Now the step is a function of scroll position — the panel
+ * sticks, the track scrolls behind it, and the demo only ever advances because
+ * someone asked. It runs backwards just as willingly, which a carousel never
+ * does.
+ *
+ * Every step is still a real button. Clicking one scrolls to its segment rather
+ * than setting state directly, because with scroll as the source of truth,
+ * state set any other way is undone by the very next scroll event.
+ *
+ * One non-obvious dependency: the sticky panel only works because `useInView`
+ * fires once and disconnects, leaving `reveal` at `transform: none`. A non-none
+ * transform on an ancestor becomes the containing block for its descendants and
+ * silently kills `position: sticky` — so if `reveal` is ever changed to
+ * re-trigger on scroll, this section stops sticking and nothing will say why.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarCheck, Filter, MessageCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Section } from "@/components/molecules/Section";
 import { Price } from "@/components/molecules/Price";
 import { PlanScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
+import { useScrollSteps } from "@/hooks/useScrollSteps";
 import type { Messages } from "@/lib/i18n";
 
-const STEP_MS = 3800;
-
 const STEP_ICONS = [Search, Filter, MessageCircle, CalendarCheck] as const;
+
+/**
+ * Scroll distance per step, in viewport heights.
+ *
+ * Tuned by feel rather than derived: much below this and a normal wheel flick
+ * skips a step entirely; much above and the section overstays its welcome on a
+ * page people are scrolling to reach prices.
+ */
+const VH_PER_STEP = 62;
 
 function steps(m: Messages) {
   return [
@@ -46,41 +63,9 @@ function steps(m: Messages) {
 }
 
 export function DemoSection() {
-  const [step, setStep] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const stageRef = useRef<HTMLDivElement>(null);
   const { m } = useMessages();
   const STEPS = steps(m);
-
-  // Only runs while the section is actually on screen. An animation ticking
-  // away under the fold is pure waste on a phone.
-  useEffect(() => {
-    const node = stageRef.current;
-    if (!node) return;
-
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    if (typeof IntersectionObserver === "undefined") return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setPlaying(entry.isIntersecting),
-      { threshold: 0.35 },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!playing) return;
-    const timer = setInterval(() => setStep((s) => (s + 1) % STEP_ICONS.length), STEP_MS);
-    return () => clearInterval(timer);
-  }, [playing]);
-
-  // A click is a deliberate choice, so it stops the carousel moving on its own.
-  // Nothing is more irritating than an auto-advance that fights the reader.
-  const pick = useCallback((index: number) => {
-    setStep(index);
-    setPlaying(false);
-  }, []);
+  const { ref, index: step, scrollTo } = useScrollSteps<HTMLDivElement>(STEPS.length);
 
   return (
     <Section
@@ -89,58 +74,70 @@ export function DemoSection() {
       lead={m.demo.lead}
       illustration={<PlanScene className="size-24" />}
     >
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr] lg:items-start lg:gap-10">
-        <ol className="grid gap-2">
-          {STEPS.map((item, index) => {
-            const active = index === step;
-            const Icon = STEP_ICONS[index];
-            return (
-              <li key={item.title}>
-                <button
-                  type="button"
-                  onClick={() => pick(index)}
-                  aria-current={active}
-                  className={cn(
-                    "flex w-full gap-3 rounded-card border p-3.5 text-left",
-                    "transition-[border-color,background-color] duration-[--duration-fast]",
-                    active
-                      ? "border-accent bg-accent-soft"
-                      : "border-border bg-surface hover:border-border-strong",
-                  )}
-                >
-                  <span
+      {/* The track. Its only job is to be tall — that height is the scrub
+          distance. Everything visible lives in the sticky child. */}
+      <div ref={ref} style={{ height: `${STEPS.length * VH_PER_STEP}vh` }}>
+        <div className="sticky top-20 grid gap-6 lg:grid-cols-[1fr_1.15fr] lg:items-start lg:gap-10">
+          <ol className="grid gap-2">
+            {STEPS.map((item, i) => {
+              const active = i === step;
+              const Icon = STEP_ICONS[i];
+              return (
+                <li key={item.title}>
+                  <button
+                    type="button"
+                    onClick={() => scrollTo(i)}
+                    aria-current={active}
                     className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-lg",
-                      active ? "bg-accent text-accent-fg" : "bg-surface-2 text-fg-muted",
+                      "pressable relative flex w-full gap-3 overflow-hidden rounded-card border p-3.5 text-left",
+                      "transition-[border-color,background-color] duration-[--duration-normal]",
+                      active
+                        ? "border-accent bg-accent-soft"
+                        : "border-border bg-surface hover:border-border-strong",
                     )}
-                    aria-hidden
                   >
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">{item.title}</span>
+                    {/* A rule down the left edge that fills on the active step.
+                        Scroll-driven sequences need somewhere for the eye to
+                        register "this one", and a border colour alone is too
+                        quiet once four cards are stacked. */}
                     <span
                       className={cn(
-                        "mt-1 block text-sm text-fg-muted",
-                        // Collapsed when inactive so four steps fit without
-                        // becoming a wall of text.
-                        active ? "" : "hidden sm:line-clamp-1",
+                        "absolute inset-y-0 left-0 w-0.5 origin-top bg-accent transition-transform duration-[--duration-slow] ease-[--ease-out]",
+                        active ? "scale-y-100" : "scale-y-0",
                       )}
+                      aria-hidden
+                    />
+                    <span
+                      className={cn(
+                        "grid size-8 shrink-0 place-items-center rounded-lg transition-colors duration-[--duration-normal]",
+                        active ? "bg-accent text-accent-fg" : "bg-surface-2 text-fg-muted",
+                      )}
+                      aria-hidden
                     >
-                      {item.body}
+                      <Icon className="size-4" />
                     </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{item.title}</span>
+                      <span
+                        className={cn(
+                          "mt-1 block text-sm text-fg-muted",
+                          // Collapsed when inactive so four steps fit without
+                          // becoming a wall of text.
+                          active ? "" : "hidden sm:line-clamp-1",
+                        )}
+                      >
+                        {item.body}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
 
-        <div
-          ref={stageRef}
-          className="overflow-hidden rounded-panel border border-border bg-surface-2 p-4 shadow-card sm:p-6"
-        >
-          <Stage step={step} label={STEPS[step].title} />
+          <div className="overflow-hidden rounded-panel border border-border bg-surface-2 p-4 shadow-card sm:p-6">
+            <Stage step={step} label={STEPS[step].title} />
+          </div>
         </div>
       </div>
     </Section>

@@ -46,11 +46,38 @@ still own their data, so they keep the honest name — splitting a data-free
 template out of them is worth doing when a second page wants the same layout, and
 not before.
 
+## Motion
+
+One rule: **motion must be caused.** Either the reader caused it — a press, a
+hover, a scroll — or it happens once on arrival. Nothing loops in the corner of the
+eye and nothing moves while you are reading it. Every primitive below is a Tailwind
+`@utility` in `globals.css`, built on the duration and easing tokens, and every one
+honours `prefers-reduced-motion`.
+
+| Utility | What it does |
+|---|---|
+| `reveal` | a section arriving as it is scrolled to, once |
+| `stagger` | direct children cascading 60ms apart |
+| `draw` | a stroke drawing itself; `pathLength="1"` fits any curve |
+| `travel` | movement along an `offset-path` |
+| `pop` | a spring-overshoot entrance, for things that should land with weight |
+| `lift` | 2px and a hue-tinted shadow on hover |
+| `pressable` | 1px of travel on `:active` |
+| `grain` | a fixed 2.5% noise layer, so flat fills stop reading as a swatch |
+
+Two things worth knowing before editing this. `travel` takes its `offset-path` from
+the same `d` the shape is drawn from — never a second copy, or the plane flies
+beside the line instead of along it. And `DemoSection`'s sticky panel works only
+because `useInView` fires once and disconnects, leaving `reveal` at `transform:
+none`; a non-none transform on an ancestor becomes the containing block and
+silently kills `position: sticky`.
+
 ## Stack
 
 | Layer | Technology |
 |---|---|
 | Web | Next.js (App Router), TypeScript, Tailwind v4, shadcn/ui, TanStack Query |
+| Type | Plus Jakarta Sans + JetBrains Mono, self-hosted via `next/font` |
 | API | FastAPI, Python 3.13, LiteLLM, Redis |
 | LLM | Provider-agnostic via LiteLLM — Gemini, OpenAI, Anthropic, GLM |
 | Flight data | Amadeus + Google Flights (RapidAPI) |
@@ -193,6 +220,7 @@ pnpm build
 | 4b | `/flights` results page — full list, filters, sort | ✅ |
 | 4c | Colour system, illustrations, motion, landing narrative | ✅ |
 | 4d | Indonesian + English, OG images, sitemap, onboarding tour | ✅ |
+| 4e | Brand mark, real typeface, motion system, atomic components | ✅ |
 | 5 | Companion dock: the agent reads the page you are on | ⬜ |
 | 6 | Itinerary + trip board + calendar export (`.ics`) | ⬜ |
 | 7 | Google sign-in + Calendar sync (OAuth, two-way) | ⬜ |

@@ -371,6 +371,37 @@ The product's value is judgement and real data, and it should look like it.
 > "Linear built a travel product for Indonesia", just with the warmth that description
 > always implied.
 
+> **Amended after 4e.** The 4c amendment above was written and then largely not
+> delivered, and the gap was invisible because nothing failed. Three corrections.
+>
+> **The typeface was never loading.** `globals.css` named `"Inter"` and
+> `"JetBrains Mono"` for months, and nothing anywhere fetched either — no
+> `next/font`, no `@font-face`, no link tag. Every visitor read this site in their
+> OS UI font, and the prices this brief sets in mono with tabular figures fell back
+> to a generic monospace. A type system that is only a CSS variable is decoration.
+> It is **Plus Jakarta Sans** now, self-hosted through `next/font`, chosen over
+> restoring Inter for two reasons: Inter is the most recognisable signature of a
+> generated interface, and a humanist sans commissioned for Jakarta carries
+> Indonesian better than Inter's mechanical evenness.
+>
+> **"Motion is entrance and atmosphere only" was too narrow.** It produced a page
+> that arrived and then died — hover states everywhere and no acknowledgement of a
+> click anywhere on the site. The rule is now *motion must be caused*: either the
+> reader caused it (press, hover, scroll) or it happens once on arrival. What is
+> still banned is the thing that rule was written against — anything looping in the
+> corner of the eye, and anything that moves while you are reading it. The demo
+> section is the test case: it used to advance itself every 3.8 seconds and now the
+> step is a function of scroll position, so it only ever moves because someone
+> asked, and it runs backwards too.
+>
+> **The logo was a Lucide compass in a rounded square** — the mark every generated
+> product ships with, and the wrong idea besides, since a compass points at a
+> direction and this product is about the leg between two named places. The mark is
+> now that arc, the same drawing as the hero illustration rather than unrelated art,
+> origin in brand and arrival in warm.
+>
+> The four palette rules above stand unchanged.
+
 One borrowed thing, deliberately: **the information density of an Indonesian OTA
 homepage.** Traveloka's landing page is busy, and that busyness is not a mistake —
 it signals capability to a user who is about to spend two million rupiah. Take the

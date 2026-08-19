@@ -15,6 +15,7 @@
 
 import Link from "next/link";
 import { GithubMark } from "@/components/ui/GithubMark";
+import { Mark } from "@/components/illustration/Mark";
 import { useInView } from "@/hooks/useInView";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 
@@ -24,24 +25,32 @@ export function BelowFold() {
 
   return (
     <>
-      <section ref={ref} {...props} className="reveal border-t border-border py-16">
-        <div className="mx-auto max-w-3xl px-5">
-          <p className="tabular mb-1.5 font-mono text-2xs font-medium uppercase tracking-widest text-warm">
+      <section ref={ref} {...props} className="reveal border-t border-border py-16 sm:py-24">
+        <div className="stagger mx-auto max-w-3xl px-5">
+          <p className="eyebrow mb-2 font-mono text-2xs font-semibold text-warm">
             {m.trust.eyebrow}
           </p>
-          <h2 className="text-balance text-2xl font-semibold tracking-tight">{m.trust.title}</h2>
-          <p className="mt-4 text-pretty text-base text-fg-muted">
+          <h2 className="display text-2xl sm:text-3xl">{m.trust.title}</h2>
+          <p className="mt-5 text-pretty text-lg leading-relaxed text-fg-muted">
             {m.trust.body1Before}
             <strong className="font-medium text-fg">{m.trust.body1Strong}</strong>
             {m.trust.body1After}
           </p>
-          <p className="mt-3 text-pretty text-base text-fg-muted">{m.trust.body2}</p>
+          <p className="mt-3.5 text-pretty text-base leading-relaxed text-fg-muted">
+            {m.trust.body2}
+          </p>
         </div>
       </section>
 
       <footer className="border-t border-border py-10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5">
-          <p className="text-sm text-fg-subtle">{m.footer.note}</p>
+          {/* The mark closes the page the same way it opens it. Cheap, and it is
+              what makes a footer read as the end of something rather than as
+              where the content ran out. */}
+          <p className="flex items-center gap-2 text-sm text-fg-subtle">
+            <Mark className="size-5 shrink-0 text-fg-subtle" />
+            {m.footer.note}
+          </p>
           <div className="flex items-center gap-4">
             <Link
               href={`/${locale}/chat`}
