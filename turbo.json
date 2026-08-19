@@ -1,5 +1,19 @@
 {
   "$schema": "https://turbo.build/schema.json",
+
+  // Stream task output instead of drawing turbo's interactive TUI.
+  //
+  // The TUI only engages for persistent tasks, which is why `turbo run build`
+  // and `turbo run typecheck` were fine while `pnpm dev` died instantly with
+  // exit code 3221226505 -- 0xC0000409, STATUS_STACK_BUFFER_OVERRUN. That is
+  // turbo's own Rust binary aborting on Windows, not a task failing, which is
+  // why it printed the version banner and nothing else: it never got as far as
+  // starting a server.
+  //
+  // Streaming also prefixes every line with the package it came from, so the
+  // API and Next logs stay legible interleaved.
+  "ui": "stream",
+
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

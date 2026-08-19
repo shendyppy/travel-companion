@@ -141,6 +141,13 @@ Files\nodejs` is an nvm symlink, so changing Node version changes pnpm with it. 
 `pnpm-workspace.yaml` stops pnpm trying to fix this by itself mid-`dev`, which it
 cannot do without a TTY that turbo does not give it.
 
+A different failure with a less helpful message: exit code `3221226505` right after
+turbo prints its version banner, with no task output at all. That is `0xC0000409`,
+`STATUS_STACK_BUFFER_OVERRUN` — turbo's own binary crashing, not a task. It only
+happens on persistent tasks, which is why `pnpm build` and `pnpm typecheck` are
+unaffected while `pnpm dev` dies instantly. `"ui": "stream"` in `turbo.json` keeps
+turbo out of its interactive TUI and fixes it.
+
 ```bash
 pnpm --filter @travel/api test   # 142 tests, no network needed
 pnpm typecheck
