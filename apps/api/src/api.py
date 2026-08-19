@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from src import access, catalogue, deals as deals_cache, tools
+from src import access, catalogue, deals as deals_cache, flight_results, tools
 from src.agent import AgentEvent, Turn, parse_seed, run as run_agent
 from src.config import LOG_FORMAT, LOG_LEVEL
 from src.providers import knowledge
@@ -371,6 +371,148 @@ async def deals(origin: Optional[str] = None):
     """
     payload = await deals_cache.get(origin)
     return DealsResponse(**payload, requested_origin=origin)
+
+
+# ==============================================================================
+# Flight results
+# ==============================================================================
+
+
+class FlightOption(BaseModel):
+    airline: str
+    airline_code: str
+    departure_time: str
+    arrival_time: str
+    origin: str
+    destination: str
+    price: float
+    currency: str
+    duration: str
+    duration_minutes: Optional[int] = Field(None, description="Total minutes, for sorting")
+    departure_bucket: Optional[str] = Field(
+        None, description="pagi | siang | sore | malam — matches the departure_buckets facet"
+    )
+    stops: int
+
+
+class AirlineFacet(BaseModel):
+    code: str
+    name: str
+    count: int
+    min_price: Optional[int] = None
+
+
+class StopsFacet(BaseModel):
+    value: int
+    count: int
+
+
+class RangeFacet(BaseModel):
+    min: int
+    max: int
+
+
+class DurationFacet(BaseModel):
+    min_minutes: int
+    max_minutes: int
+
+
+class DepartureBucketFacet(BaseModel):
+    value: str = Field(..., description="pagi | siang | sore | malam")
+    label: str
+    count: int
+
+
+class FlightFacets(BaseModel):
+    """
+    Filter vocabulary for one result set.
+
+    Only values present in `flights` appear here, so a control built from this
+    can never filter to nothing.
+    """
+
+    airlines: list[AirlineFacet] = []
+    stops: list[StopsFacet] = []
+    price: Optional[RangeFacet] = None
+    duration: Optional[DurationFacet] = None
+    departure_buckets: list[DepartureBucketFacet] = []
+
+
+class FlightSearchResponse(BaseModel):
+    origin: str = Field(..., description="Resolved IATA code, which may differ from what was typed")
+    destination: str
+    departure_date: str
+    return_date: Optional[str] = None
+    adults: int
+    dates_returned: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Departure dates the provider actually returned, when they differ from "
+            "the one requested. Empty in the normal case. Non-empty means the fares "
+            "below are for another day and the UI must say so rather than relabel them."
+        ),
+    )
+    currency: str = "IDR"
+    total_found: int
+    flights: list[FlightOption] = []
+    facets: FlightFacets = FlightFacets()
+    booking_links: dict[str, str] = Field(
+        default_factory=dict, description="Handoff to whoever actually sells the seat"
+    )
+    cached_at: str
+    cached: bool = Field(..., description="True when served without touching a provider")
+
+
+@app.get("/api/flights/search", response_model=FlightSearchResponse, tags=["Flights"])
+async def flight_search(
+    http: Request,
+    origin: str,
+    destination: str,
+    departure_date: str,
+    return_date: Optional[str] = None,
+    adults: int = 1,
+):
+    """
+    Every flight a provider returned for one route and date, plus filter facets.
+
+    Unlike `search_flights` (the agent tool), this is not truncated -- the tool's
+    eight-result cap is a token budget, and a results page has no tokens to
+    budget. See `MAX_RESULTS` in `tools/flights.py`.
+
+    Unlike `/api/deals`, this *may* reach a provider on the request path, because
+    a person typed this route and is waiting. What keeps that from being an open
+    tap is a per-IP hourly limit on provider calls plus a 15-minute cache; a
+    cached answer costs nothing and spends no allowance.
+
+    `origin` and `destination` are forgiving -- city name, nickname, or IATA.
+    They are resolved server-side, and the response reports what they resolved to.
+    """
+    if not (1 <= adults <= 9):
+        return JSONResponse(status_code=422, content={"error": "adults must be between 1 and 9."})
+
+    grant = await access.check_provider_call(http)
+    if not grant.allowed:
+        return JSONResponse(status_code=429, content={"error": grant.reason})
+
+    result = await flight_results.search(
+        origin=origin,
+        destination=destination,
+        departure_date=departure_date,
+        return_date=return_date,
+        adults=adults,
+    )
+
+    if not result.get("cached"):
+        await access.consume_provider_call(http)
+
+    if not result.get("ok"):
+        # A route with no flights, a date in the past, a provider that timed out:
+        # all normal outcomes the page renders as an explanation. 502 rather than
+        # 500 because the fault is upstream, and never a 500, which would read as
+        # a bug in this service.
+        return JSONResponse(status_code=502, content={"error": result.get("error")})
+
+    return FlightSearchResponse(**{k: v for k, v in result.items() if k != "ok"})
 
 
 # ==============================================================================
