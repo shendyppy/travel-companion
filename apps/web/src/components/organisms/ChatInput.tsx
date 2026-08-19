@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 
 const MAX_HEIGHT = 160;
@@ -75,24 +76,27 @@ export function ChatInput({
       />
 
       {busy && onStop ? (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="icon"
           onClick={onStop}
-          aria-label="Hentikan"
-          className="grid size-9 shrink-0 place-items-center rounded-lg border border-border text-fg-muted hover:bg-surface-2"
+          aria-label={m.chat.stop}
+          className="size-9 shrink-0"
         >
           <Square className="size-3.5 fill-current" />
-        </button>
+        </Button>
       ) : (
-        <button
+        <Button
           type="button"
+          size="icon"
           onClick={submit}
           disabled={!value.trim() || busy}
-          aria-label="Kirim"
-          className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-accent-fg transition-opacity disabled:opacity-40"
+          aria-label={m.chat.send}
+          className="size-9 shrink-0"
         >
           <ArrowUp className="size-4" />
-        </button>
+        </Button>
       )}
     </div>
   );

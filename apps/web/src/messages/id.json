@@ -177,7 +177,9 @@
     "opener2": "Cariin tiket Jakarta ke Bali minggu depan",
     "opener3": "Yogyakarta bulan Oktober gimana cuacanya?",
     "freeMessages": "{n} pesan gratis",
-    "closePanel": "Tutup panel"
+    "closePanel": "Tutup panel",
+    "send": "Kirim",
+    "stop": "Hentikan"
   },
   "tool": {
     "searchFlights": "Mencari penerbangan {route}",

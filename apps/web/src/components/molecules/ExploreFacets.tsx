@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { useMessages } from "@/components/i18n/MessagesProvider";
@@ -132,15 +133,10 @@ export function ExploreFacets({
         </Group>
       </div>
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={busy}
-        className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-lg bg-accent px-6 text-sm font-medium text-accent-fg transition-opacity disabled:opacity-40"
-      >
+      <Button type="button" onClick={submit} disabled={busy} className="self-start">
         <Sparkles className="size-4" aria-hidden />
         {m.explore.submit}
-      </button>
+      </Button>
     </div>
   );
 }

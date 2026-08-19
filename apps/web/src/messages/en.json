@@ -177,7 +177,9 @@
     "opener2": "Find me a Jakarta to Bali ticket next week",
     "opener3": "What is the weather like in Yogyakarta in October?",
     "freeMessages": "{n} free messages",
-    "closePanel": "Close panel"
+    "closePanel": "Close panel",
+    "send": "Send",
+    "stop": "Stop"
   },
   "tool": {
     "searchFlights": "Searching flights {route}",

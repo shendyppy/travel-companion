@@ -23,8 +23,8 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       type="button"
       aria-pressed={selected}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill border px-3.5 py-1.5 text-sm text-left whitespace-normal",
-        "transition-[background-color,border-color,color] duration-[--duration-fast]",
+        "pressable inline-flex items-center gap-1.5 rounded-pill border px-3.5 py-1.5 text-sm text-left whitespace-normal",
+        "transition-[background-color,border-color,color,transform] duration-[--duration-fast]",
         selected
           ? "border-accent bg-accent-soft text-accent font-medium"
           : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg",

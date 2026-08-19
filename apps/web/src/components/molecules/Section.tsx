@@ -49,18 +49,18 @@ export function Section({
       id={id}
       data-tour={tourId}
       {...props}
-      className={cn("reveal border-t border-border py-14", className)}
+      className={cn("reveal border-t border-border py-16 sm:py-24", className)}
     >
       <div className="mx-auto max-w-6xl px-5">
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 sm:mb-10">
           <div className="min-w-0 max-w-2xl">
             {eyebrow && (
-              <p className="tabular mb-1.5 font-mono text-2xs font-medium uppercase tracking-widest text-warm">
-                {eyebrow}
-              </p>
+              <p className="eyebrow mb-2 font-mono text-2xs font-semibold text-warm">{eyebrow}</p>
             )}
-            <h2 className="text-balance text-2xl font-semibold tracking-tight">{title}</h2>
-            {lead && <p className="mt-2 text-pretty text-base text-fg-muted">{lead}</p>}
+            <h2 className="display text-2xl sm:text-3xl">{title}</h2>
+            {lead && (
+              <p className="mt-2.5 text-pretty text-base leading-relaxed text-fg-muted">{lead}</p>
+            )}
           </div>
 
           {aside && <div className="shrink-0">{aside}</div>}

@@ -1,8 +1,39 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { DEFAULT_LOCALE, LOCALES, getMessages, isLocale, type Locale } from "@/lib/i18n";
 import { MessagesProvider } from "@/components/i18n/MessagesProvider";
+
+/**
+ * The typefaces, actually loaded.
+ *
+ * `globals.css` named "Inter" and "JetBrains Mono" for months and neither was
+ * ever fetched — no `@font-face`, no link tag, nothing. Every visitor got their
+ * system UI font, which on Windows means Segoe UI, and the prices that the brief
+ * says are set in mono with tabular figures were falling back to whatever
+ * generic monospace the OS offered. The whole type system was decorative.
+ *
+ * Plus Jakarta Sans rather than Inter. Inter is the single most recognisable
+ * signature of a generated interface, and this one is a better fit on its own
+ * terms: it is a humanist sans commissioned for the city of Jakarta, it carries
+ * Indonesian text without the mechanical evenness Inter has, and its heavier
+ * weights hold up at display size where Inter needs help.
+ *
+ * `next/font` self-hosts both. No request ever leaves for Google, which matters
+ * for a page that otherwise makes none.
+ */
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans-loaded",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono-loaded",
+  display: "swap",
+});
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -84,7 +115,11 @@ export default async function LocaleLayout({
   const messages = getMessages(locale);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${sans.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         {/*
           Dark mode is resolved before first paint. Doing it in React would mean
@@ -99,6 +134,10 @@ export default async function LocaleLayout({
         />
       </head>
       <body>
+        {/* Sits over everything at 2.5% and is never seen as texture — it exists
+            so large flat fills stop reading as a colour swatch. pointer-events
+            are off, so it is invisible to every interaction. */}
+        <div className="grain" aria-hidden />
         <MessagesProvider locale={locale} messages={messages}>
           {children}
         </MessagesProvider>

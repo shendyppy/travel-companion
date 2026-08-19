@@ -6,6 +6,7 @@ import { Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GithubMark } from "@/components/ui/GithubMark";
 import { useMessages } from "@/components/i18n/MessagesProvider";
+import { useScrolled } from "@/hooks/useScrolled";
 import { LOCALES, localePath, type Locale } from "@/lib/i18n";
 
 /**
@@ -18,12 +19,27 @@ import { LOCALES, localePath, type Locale } from "@/lib/i18n";
  */
 export function SiteNav() {
   const { m, locale } = useMessages();
+  const scrolled = useScrolled();
   const base = `/${locale}`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur">
+    // At rest the header is part of the hero: no border, no blur, nothing
+    // separating it from the page. The divider appears only once there is
+    // something scrolled underneath it, which is the only moment it means
+    // anything.
+    <header
+      className={cn(
+        "sticky top-0 z-40 transition-[background-color,border-color,box-shadow] duration-[--duration-normal]",
+        scrolled
+          ? "border-b border-border bg-bg/85 shadow-card backdrop-blur"
+          : "border-b border-transparent bg-transparent",
+      )}
+    >
       <nav className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-5">
-        <Link href={base} className="flex items-center gap-2 font-semibold tracking-tight">
+        <Link
+          href={base}
+          className="flex items-center gap-2 font-semibold tracking-[--tracking-heading]"
+        >
           <span className="grid size-7 place-items-center rounded-md bg-accent" aria-hidden>
             <Compass className="size-4 text-accent-fg" />
           </span>

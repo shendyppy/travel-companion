@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 
 const SEEN_KEY = "tc:tour-seen";
@@ -186,13 +187,13 @@ export function OnboardingTour() {
           >
             {m.tour.skip}
           </button>
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => (last ? close() : setStep((s) => s + 1))}
-            className="inline-flex h-8 items-center rounded-lg bg-accent px-4 text-sm font-medium text-accent-fg"
           >
             {last ? m.tour.done : m.tour.next}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

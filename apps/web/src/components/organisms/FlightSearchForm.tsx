@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { ArrowRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { isoDateIn, shortDate } from "@/lib/format";
 import { useMessages } from "@/components/i18n/MessagesProvider";
 import type { FlightQuery, ToolSeed } from "@/lib/types";
@@ -212,18 +213,15 @@ export function FlightSearchForm({
         )}
 
         <div className="flex items-end">
-          <button
+          <Button
             type="button"
             onClick={submit}
             disabled={!ready || busy}
-            className={cn(
-              "inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg px-6 text-sm font-medium sm:w-auto",
-              "bg-accent text-accent-fg transition-opacity disabled:opacity-40",
-            )}
+            className="w-full sm:w-auto"
           >
             {submitLabel ?? m.flightForm.submit}
             <ArrowRight className="size-4" aria-hidden />
-          </button>
+          </Button>
         </div>
       </div>
 

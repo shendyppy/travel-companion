@@ -17,9 +17,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* ---- Type ---- */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* ---- Type ----
+     The families come from `next/font` in the locale layout, which self-hosts
+     them and hands them over as these two variables. The stacks below are the
+     fallback for the swap window only — before this, they were the *whole*
+     answer, because nothing was ever loading the named faces at all. */
+  --font-sans: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Reading rhythm for long Markdown answers. Body is 15px, not 14px —
      agent answers are frequently several hundred words. */
@@ -139,6 +143,16 @@
   /* Never use --color-fg-subtle for data (prices, dates) — it is for hints and
      placeholders only. Money and dates use --color-fg-muted or stronger.
      --text-2xs (11px) is a hard floor for any product text. */
+
+  /* ---- Tracking ----
+     Plus Jakarta Sans sets wider than Inter at the same size, which is pleasant
+     in a paragraph and loose in a headline. Display type gets pulled in hard;
+     body is left alone, because tightening running text to look "designed" is
+     how you make Indonesian — which has longer words than English — harder to
+     read for no gain. */
+  --tracking-display: -0.032em;
+  --tracking-heading: -0.018em;
+  --tracking-eyebrow: 0.14em;
 
   /* ---- Radius ---- */
   --radius-xs: 0.25rem;
@@ -286,6 +300,69 @@
 /* Money gets one treatment everywhere: tabular figures so columns of rupiah
    line up, and no wrapping mid-number. */
 @utility tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1 }
+
+/* Display type. One utility rather than three classes repeated per heading, so
+   the tracking and the balance cannot drift apart between sections. */
+@utility display {
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+  font-weight: 700;
+}
+
+/* The step markers above each section heading — "01", "02". Letterspaced the
+   other way: small uppercase text needs air to stay legible, which is the
+   opposite of what display type needs. */
+@utility eyebrow {
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A single grain layer over the whole page.
+ *
+ * Perfectly flat colour is the thing that reads as generated — real surfaces
+ * have some noise in them, and at 2.5% opacity this is nowhere near visible as
+ * texture, it just stops large fills looking like a screenshot of a swatch.
+ *
+ * SVG turbulence rather than an image: no request, no cache entry, and it scales
+ * to any viewport. `pointer-events: none` because it covers everything.
+ */
+@utility grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  /* Grain over a dark surface reads heavier than the same grain over a light
+     one, so it comes down rather than staying put and turning into visible
+     static. */
+  @variant dark {
+    opacity: 0.04;
+  }
+}
+
+/* Physical feedback on press.
+ *
+ * Nothing in this interface acknowledged a click before — hover states
+ * everywhere, and then the button just sat there while it was held down. Two
+ * pixels of travel over 90ms is below conscious notice and is the whole
+ * difference between a control that feels connected and one that feels like a
+ * picture of a control.
+ */
+@utility pressable {
+  transition: transform var(--duration-instant) var(--ease-out);
+
+  &:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &:active:not(:disabled) { transform: none }
+  }
+}
 
 /* Horizontal rails: scrollable, snapped, without a visible scrollbar on the
    platforms that draw a permanent one. */

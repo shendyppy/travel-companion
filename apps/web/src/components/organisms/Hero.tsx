@@ -23,6 +23,7 @@ import { useRef } from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
 import { ChatBubble } from "@/components/organisms/ChatBubble";
 import { ChatInput } from "@/components/organisms/ChatInput";
+import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { RouteScene } from "@/components/illustration/Scenes";
 import { useMessages } from "@/components/i18n/MessagesProvider";
@@ -64,11 +65,17 @@ export function Hero({
         {!started && (
           <RouteScene className="animate-fade mb-6 hidden h-24 w-full max-w-sm text-fg-muted sm:block" />
         )}
-        <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-          {m.hero.titleLead} <span className="text-accent">{m.hero.titleAccent}</span>
+        {/* The accent half of the headline carries the warm ramp, not the brand
+            ramp. Brand blue is the colour of things you can click; using it here
+            would make a heading look like the primary action and quietly compete
+            with the search bar directly beneath it. */}
+        <h1 className="display text-4xl sm:text-5xl">
+          {m.hero.titleLead} <span className="text-warm">{m.hero.titleAccent}</span>
         </h1>
         {!started && (
-          <p className="animate-fade mt-3 text-pretty text-lg text-fg-muted">{m.hero.lead}</p>
+          <p className="animate-fade mt-4 max-w-xl text-pretty text-lg leading-relaxed text-fg-muted">
+            {m.hero.lead}
+          </p>
         )}
       </div>
 
@@ -106,22 +113,14 @@ export function Hero({
 
           {!agent.isStreaming && (
             <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-              <button
-                type="button"
-                onClick={onHandOff}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-medium text-accent-fg"
-              >
+              <Button type="button" onClick={onHandOff}>
                 {m.hero.continueInCompanion}
                 <ArrowRight className="size-4" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={agent.reset}
-                className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm text-fg-muted hover:text-fg"
-              >
+              </Button>
+              <Button type="button" variant="ghost" onClick={agent.reset}>
                 <RotateCcw className="size-3.5" aria-hidden />
                 {m.hero.startOver}
-              </button>
+              </Button>
               {agent.quotaRemaining !== null && (
                 <span className="tabular ml-auto text-xs text-fg-subtle">
                   {t(m.hero.quotaLeft, { n: agent.quotaRemaining })}
